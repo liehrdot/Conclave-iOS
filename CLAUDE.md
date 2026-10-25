@@ -35,6 +35,10 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   (`URLSession.conclave()`: no URL cache, no cookies; tests use `FakeTransport`), errors as `ServerError`.
   `Connection.pair`/`signOff` = parse, claim, save in a `DeviceStore` (the app's is `KeychainDeviceStore`), with
   the English sentences the app shows (`Connection.message(for:)`).
+  `Connection.stillPaired` asks `/api/app/status` and forgets a device the PC signed off (401).
+  `ReadModel` = the typed read model (decks, opponents, games, `Options`); `shown…` prefer the server's
+  English `*_en` fields and fall back to German. `ReadModelCache` keeps the raw JSON + ETag on disk and
+  `refresh(from:)` sends `If-None-Match`.
 - App: `AppModel` (paired device), `RootView` (welcome or paired), `WelcomeView` → `ScanView` (VisionKit QR) or
   `EnterCodeView`. Screens for screenshots: `welcome`, `code`, `scan` (the simulator has no camera: "No Camera"), `signed-off`, `paired` (`AppModel.launch()`, no Keychain).
   Colours: `AccentColor` = dark green in light mode, neon in dark (text, icons); `Neon` = fills, always with black text.
