@@ -12,6 +12,14 @@ final class AppModel {
     private(set) var library: ReadModel?
     /// Why the last update failed (offline, server error); nil once one worked.
     private(set) var problem: String?
+    /// When the server last answered a refresh (new data or "unchanged").
+    private(set) var lastUpdate: Date?
+    /// The PCs on the sync server, as the settings show them; nil until `loadStatus()` got an answer.
+    private(set) var status: ServerStatus?
+    /// When `status` arrived, on this phone's clock.
+    private(set) var statusReceived: Date?
+    /// The last `loadStatus()` got no answer.
+    private(set) var statusFailed = false
     /// Why the phone is no longer paired, when the PC signed it off; shown on the welcome screen.
     private(set) var notice: String?
     /// The made-up account from the welcome screen ("Try the Demo"): nothing is sent anywhere.
@@ -76,15 +84,31 @@ final class AppModel {
         case .changed(let model):
             library = model
             problem = nil
+            lastUpdate = .now
         case .unchanged:
             problem = nil
+            lastUpdate = .now
         case .failed(let message):
             problem = message
         case .signedOff:
             self.device = nil
             library = nil
             notice = ServerError.signedOff.message
+            status = nil
             await cards.clear()
+        }
+    }
+
+    /// Asks the server which PCs are there and online (`GET /api/app/status`), for the settings.
+    /// A failure leaves the last answer; a 401 is noticed by the next `refresh()`.
+    func loadStatus() async {
+        guard let device, !inDemo else { return }
+        let answer = try? await Server(device: device, transport: transport).status()
+        guard self.device == device else { return }
+        statusFailed = answer == nil
+        if let answer {
+            status = answer
+            statusReceived = .now
         }
     }
 
@@ -95,6 +119,8 @@ final class AppModel {
         self.device = nil
         library = nil
         problem = nil
+        status = nil
+        lastUpdate = nil
         await cards.clear()
     }
 }

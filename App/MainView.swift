@@ -70,7 +70,8 @@ struct DemoBadge: View {
     }
 }
 
-/// Where the phone is connected, and signing out; in the demo, what it is and "Leave Demo".
+/// Where the phone is connected and which PCs are online, the web app, credits and signing out;
+/// in the demo, what it is and "Leave Demo". Mirrors the PWA's settings sheet in `forms.js`.
 struct SettingsView: View {
     let device: Device
     @Environment(AppModel.self) private var model
@@ -101,7 +102,19 @@ struct SettingsView: View {
                         if let problem = model.problem {
                             Label(problem, systemImage: "wifi.exclamationmark")
                                 .foregroundStyle(.secondary)
+                        } else if let updated = model.lastUpdate {
+                            LabeledContent("Last update") {
+                                Text(updated, format: .relative(presentation: .named))
+                            }
                         }
+                    }
+                    pcsSection
+                    Section {
+                        Link(destination: device.server.appending(path: "app/")) {
+                            Label("Open the Web App", systemImage: "safari")
+                        }
+                    } footer: {
+                        Text("The web app has what this app doesn't have yet: logging games, the collection and the scanner.")
                     }
                     Section {
                         Button("Sign Out", role: .destructive) { confirming = true }
@@ -109,7 +122,9 @@ struct SettingsView: View {
                         Text("Your decks stay on your PC.")
                     }
                 }
+                aboutSection
             }
+            .task { await model.loadStatus() }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -128,6 +143,73 @@ struct SettingsView: View {
                 Text("It is removed from your sync server. Your decks stay on your PC.")
             }
         }
+    }
+
+    /// The PCs on this sync server: online now, or when they were last seen.
+    @ViewBuilder
+    private var pcsSection: some View {
+        Section {
+            if let status = model.status {
+                if status.pcs.isEmpty {
+                    Text("No PC is connected to this server yet.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(status.pcs, id: \.name) { pc in
+                    LabeledContent {
+                        if pc.online {
+                            Label("Online", systemImage: "circle.fill")
+                                .labelStyle(.titleAndIcon)
+                                .foregroundStyle(.green)
+                                .imageScale(.small)
+                        } else if let seen = pc.lastSeen(now: status.now, received: model.statusReceived ?? .now) {
+                            Text("Seen \(seen, format: .relative(presentation: .named))")
+                        } else {
+                            Text("Not seen yet")
+                        }
+                    } label: {
+                        Label(pc.name, systemImage: "desktopcomputer")
+                    }
+                }
+            } else if model.statusFailed {
+                Label("Can't reach the server right now.", systemImage: "wifi.exclamationmark")
+                    .foregroundStyle(.secondary)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+            }
+        } header: {
+            Text("Your PCs")
+        } footer: {
+            Text("New decks and changes arrive here after a PC syncs.")
+        }
+    }
+
+    /// Version, where the code and the card data come from, and the licences.
+    private var aboutSection: some View {
+        Section {
+            LabeledContent("Version", value: Self.version)
+            Link(destination: URL(string: "https://github.com/liehrdot/Conclave-iOS")!) {
+                Label("Source Code", systemImage: "chevron.left.forwardslash.chevron.right")
+            }
+            Link(destination: URL(string: "https://scryfall.com")!) {
+                Label("Card Data and Images: Scryfall", systemImage: "photo.on.rectangle")
+            }
+            Link(destination: URL(string: "https://mana.andrewgioia.com")!) {
+                Label("Mana Symbols: Mana by Andrew Gioia (OFL)", systemImage: "circle.hexagongrid")
+            }
+        } header: {
+            Text("About")
+        } footer: {
+            Text("Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. © Wizards of the Coast LLC.")
+        }
+    }
+
+    /// "0.1.0 (1)": the version and build from the app's Info.plist.
+    static var version: String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(short) (\(build))"
     }
 }
 

@@ -71,6 +71,17 @@ final class FakeTransport: Transport, @unchecked Sendable {
         let status = try await Server(device: device, transport: FakeTransport(.init(body: body))).status()
         #expect(status.etag == #""ab12-3f-42""#)
         #expect(status.pcs == [.init(name: "Desk", online: true, lastSeen: 1761386400.5)])
+        #expect(status.now == 1761386401)
+    }
+
+    @Test func lastSeenUsesTheServersClock() {
+        let received = Date(timeIntervalSince1970: 1_000_000)  // the phone's clock, far off the server's
+        let pc = ServerStatus.PC(name: "Desk", online: false, lastSeen: 1761386400)
+        #expect(pc.lastSeen(now: 1761386400 + 7200, received: received) == received.addingTimeInterval(-7200))
+        #expect(pc.lastSeen(now: nil, received: received) == Date(timeIntervalSince1970: 1761386400))
+        #expect(ServerStatus.PC(name: "New", online: false, lastSeen: nil).lastSeen(now: 1, received: received) == nil)
+        // a PC "seen" after the server's now (clock skew between requests) is seen just now, never in the future
+        #expect(pc.lastSeen(now: 1761386000, received: received) == received)
     }
 
     @Test func aSignedOffDeviceIsTold() async {
