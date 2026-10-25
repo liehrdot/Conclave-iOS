@@ -36,7 +36,7 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   `Connection.pair`/`signOff` = parse, claim, save in a `DeviceStore` (the app's is `KeychainDeviceStore`), with
   the English sentences the app shows (`Connection.message(for:)`).
 - App: `AppModel` (paired device), `RootView` (welcome or paired), `WelcomeView` → `ScanView` (VisionKit QR) or
-  `EnterCodeView`. Screens for screenshots: `welcome`, `code`, `paired` (`AppModel.launch()`, no Keychain).
+  `EnterCodeView`. Screens for screenshots: `welcome`, `code`, `scan` (the simulator has no camera: "No Camera"), `signed-off`, `paired` (`AppModel.launch()`, no Keychain).
   Colours: `AccentColor` = dark green in light mode, neon in dark (text, icons); `Neon` = fills, always with black text.
 - `Packages/ConclaveCore/Tests/ConclaveCoreTests/Resources/ops.json`: Conclave's shared operation cases
   (`docs/app-api.md` there), copied at the commit in `ops.rev` by `scripts/update_api_cases.sh <full hash>`.

@@ -4,11 +4,15 @@ import SwiftUI
 /// The first screen of an unpaired phone: what the app is, and the two ways to pair it.
 /// Scanning comes first because the PC shows a QR code; typing the code is the fallback.
 struct WelcomeView: View {
-    @State private var scanning = false
+    @State private var scanning: Bool
     @State private var entering: Bool
+    /// Why the phone isn't paired any more (signed off on the PC).
+    let notice: String?
 
-    init(entering: Bool = false) {
+    init(entering: Bool = false, scanning: Bool = false, notice: String? = nil) {
+        self.notice = notice
         _entering = State(initialValue: entering)
+        _scanning = State(initialValue: scanning)
     }
 
     var body: some View {
@@ -25,6 +29,13 @@ struct WelcomeView: View {
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                if let notice {
+                    Label(notice, systemImage: "person.crop.circle.badge.xmark")
+                        .font(.callout)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(.fill.tertiary, in: .rect(cornerRadius: 16))
+                }
             }
             Spacer()
             VStack(spacing: 12) {

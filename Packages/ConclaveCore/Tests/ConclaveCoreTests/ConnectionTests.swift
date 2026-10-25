@@ -42,6 +42,34 @@ import Testing
         #expect(fake.requests.first?.httpMethod == "DELETE")
     }
 
+    @Test func signedOffOnThePCForgetsTheDevice() async {
+        let device = Device(server: URL(string: "https://sync.example.org")!, token: "t", id: "d", name: "n", serverID: "s")
+        let store = MemoryDeviceStore(device)
+        let fake = FakeTransport(.init(status: 401))
+        #expect(await Connection.stillPaired(device, store: store, transport: fake) == false)
+        #expect(store.load() == nil)
+        #expect(fake.requests.first?.url?.path == "/api/app/status")
+    }
+
+    @Test func offlineOrAServerErrorKeepsTheDevice() async {
+        let device = Device(server: URL(string: "https://sync.example.org")!, token: "t", id: "d", name: "n", serverID: "s")
+        let store = MemoryDeviceStore(device)
+        let offline = FakeTransport()
+        offline.failure = URLError(.notConnectedToInternet)
+        #expect(await Connection.stillPaired(device, store: store, transport: offline))
+        #expect(await Connection.stillPaired(device, store: store, transport: FakeTransport(.init(status: 502))))
+        #expect(await Connection.stillPaired(device, store: store, transport: FakeTransport(.init(body: #"{"etag": "x", "pcs": []}"#))))
+        #expect(store.load() == device)
+    }
+
+    @Test func aSignOffOfAnOldDeviceKeepsTheNewOne() async throws {
+        let old = Device(server: URL(string: "https://sync.example.org")!, token: "t", id: "old", name: "n", serverID: "s")
+        let new = Device(server: URL(string: "https://sync.example.org")!, token: "t2", id: "new", name: "n", serverID: "s")
+        let store = MemoryDeviceStore(new)
+        #expect(await Connection.stillPaired(old, store: store, transport: FakeTransport(.init(status: 401))) == false)
+        #expect(store.load() == new)
+    }
+
     @Test func everyProblemHasAMessage() {
         #expect(Connection.Problem.notACode.message.contains("Pair a device"))
         #expect(Connection.Problem.needsServer.message.contains("address"))
