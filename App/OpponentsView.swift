@@ -6,7 +6,7 @@ import SwiftUI
 struct OpponentsView: View {
     let device: Device
     @Environment(AppModel.self) private var model
-    @State private var path: [String] = AppModel.startScreen == "opponent"
+    @State private var path: [String] = ["opponent", "edit-opponent"].contains(AppModel.startScreen)
         ? [AppModel.demo?.opponents.first?.id].compactMap { $0 } : []
 
     var body: some View {
@@ -67,12 +67,15 @@ struct OpponentTile: View {
 }
 
 /// One opponent: what the deck does, notes from earlier games, and how each of the person's decks did.
+/// "Edit" changes its name, player and bracket; the tag chips and "Add Note" save at once.
 struct OpponentView: View {
     let opponent: Opponent
     @Environment(AppModel.self) private var model
 
     /// The commander whose card sheet is open.
     @State private var shownCard: DeckView.ShownCard?
+    @State private var editing = AppModel.startScreen == "edit-opponent"
+    @State private var addingNote = false
 
     var body: some View {
         List {
@@ -92,22 +95,40 @@ struct OpponentView: View {
                 }
             }
 
-            if !opponent.notes.isEmpty {
+            if let tags = model.library?.shownOptions.tags, !tags.isEmpty {
                 Section {
-                    ForEach(opponent.notes) { note in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(note.text)
-                            if let at = ReadModel.date(note.at) {
-                                Text(at, format: .dateTime.day().month().year())
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .glassRow()
+                    // a tap saves at once, with "Undo" in the toast, like the PWA's tag chips
+                    ChoiceChips(title: "Tap to change", choices: tags, picked: opponent.tags) { tag in
+                        Task { await model.save("opponent.update", OpponentEdit.toggle(tag, on: opponent)) }
                     }
+                    .glassRow()
                 } header: {
-                    GlassHeader("Notes")
+                    GlassHeader("What It Does")
                 }
+            }
+
+            Section {
+                Button {
+                    addingNote = true
+                } label: {
+                    Label("Add Note", systemImage: "plus")
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(.rect)
+                }
+                .glassRow()
+                ForEach(opponent.notes) { note in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(note.text)
+                        if let at = ReadModel.date(note.at) {
+                            Text(at, format: .dateTime.day().month().year())
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .glassRow()
+                }
+            } header: {
+                GlassHeader("Notes")
             }
         }
         .glassList(over: opponent.commanders.first ?? "")
@@ -115,6 +136,11 @@ struct OpponentView: View {
         .navigationBarTitleDisplayMode(.inline) // the header shows the name big
         .refreshable { await model.refresh() }
         .sheet(item: $shownCard) { shown in CardSheet(name: shown.name, copies: []) }
+        .sheet(isPresented: $editing) { EditOpponentView(opponent: opponent) }
+        .sheet(isPresented: $addingNote) { AddNoteView(opponent: opponent) }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { Button("Edit") { editing = true } }
+        }
     }
 
     /// True when the opponent has no name of its own, only its single commander's.
@@ -173,12 +199,6 @@ struct OpponentView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-            }
-            if !opponent.tags.isEmpty {
-                let tags = model.library?.shownOptions.tags ?? []
-                Text(opponent.tags.map { Options.label($0, in: tags) }.formatted(.list(type: .and)))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
             }
             GlassEffectContainer(spacing: 8) {
                 HStack(spacing: 8) {

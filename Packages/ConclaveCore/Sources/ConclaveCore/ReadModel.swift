@@ -67,6 +67,11 @@ public struct Options: Decodable, Equatable, Sendable {
         public var id: String { key }
         public var key: String
         public var label: String
+
+        public init(key: String, label: String) {
+            self.key = key
+            self.label = label
+        }
     }
 
     /// Game results ("win", "loss", "draw").
