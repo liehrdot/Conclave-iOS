@@ -62,6 +62,11 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   Mana symbols: `ManaText` draws `ManaGlyphs` (circles + the Mana font's glyphs, SVGs in `Assets.xcassets/Mana`,
   OFL licence in `App/Resources/Mana-LICENSE.txt`) inline in a `Text`. `CardImages` caches card pictures on disk
   (`returnCacheDataElseLoad`, 300 MB in Caches).
+  Look (Flo's pick from the variants in draft PR #14): Liquid Glass over the commander's art, `App/Glass.swift`.
+  The Decks tab is `DeckTiles` (glass `DeckTile`s with the commander's art in a circle, the first deck's art blurred
+  behind them via `ArtBackdrop`); a deck's screen is a `glassList(over:)` with a big header (name, commanders,
+  chips, `StatPill`s, glass Rule 0 button), `GlassHeader` sections and `glassRow()` rows with a `CardArt` thumbnail.
+  `CardArt` = a card's art crop from `CardLibrary` + `CardImages`; the Decks tab prefetches all commanders at once.
   Colours: `AccentColor` = dark green in light mode, neon in dark (text, icons); `Neon` = fills, always with black text.
 - `Packages/ConclaveCore/Tests/ConclaveCoreTests/Resources/ops.json`: Conclave's shared operation cases
   (`docs/app-api.md` there), copied at the commit in `ops.rev` by `scripts/update_api_cases.sh <full hash>`.
