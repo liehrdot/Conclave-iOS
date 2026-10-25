@@ -70,7 +70,8 @@ struct DemoBadge: View {
     }
 }
 
-/// Where the phone is connected, and signing out; in the demo, what it is and "Leave Demo".
+/// The settings, like the iPhone's own: a short list, with the details one tap deeper.
+/// In the demo: what it is and "Leave Demo". Mirrors the PWA's settings sheet in `forms.js`.
 struct SettingsView: View {
     let device: Device
     @Environment(AppModel.self) private var model
@@ -95,21 +96,37 @@ struct SettingsView: View {
                         Text("Then pair the app with Conclave on your PC to see your own decks.")
                     }
                 } else {
-                    Section("Connection") {
-                        LabeledContent("Server", value: device.server.host() ?? device.server.absoluteString)
-                        LabeledContent("This device", value: device.name)
-                        if let problem = model.problem {
-                            Label(problem, systemImage: "wifi.exclamationmark")
-                                .foregroundStyle(.secondary)
+                    Section {
+                        NavigationLink {
+                            ConnectionView(device: device)
+                        } label: {
+                            ConnectionRow(device: device)
+                        }
+                        Link(destination: device.server.appending(path: "app/")) {
+                            Label("Open the Web App", systemImage: "safari")
+                        }
+                    } footer: {
+                        Text("The web app has what this app can't do yet, like logging games and the collection.")
+                    }
+                }
+                Section {
+                    NavigationLink {
+                        AboutView()
+                    } label: {
+                        LabeledContent {
+                            Text(AboutView.version)
+                        } label: {
+                            Label("About Conclave", systemImage: "info.circle")
                         }
                     }
+                }
+                if !model.inDemo {
                     Section {
                         Button("Sign Out", role: .destructive) { confirming = true }
-                    } footer: {
-                        Text("Your decks stay on your PC.")
                     }
                 }
             }
+            .task { await model.loadStatus() }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -128,6 +145,126 @@ struct SettingsView: View {
                 Text("It is removed from your sync server. Your decks stay on your PC.")
             }
         }
+    }
+}
+
+/// The connection in one row: the server, and whether all is well ("Up to date · Desk online").
+private struct ConnectionRow: View {
+    let device: Device
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(device.server.host() ?? device.server.absoluteString)
+                Text(summary)
+                    .font(.footnote)
+                    .foregroundStyle(model.problem == nil ? Color.secondary : Color.orange)
+            }
+        } icon: {
+            Image(systemName: model.problem == nil ? "checkmark.icloud" : "exclamationmark.icloud")
+        }
+    }
+
+    private var summary: String {
+        if model.problem != nil { return "Can't update right now" }
+        let online = model.status?.pcs.filter(\.online).map(\.name) ?? []
+        let state = model.lastUpdate == nil ? "Connected" : "Up to date"
+        return online.isEmpty ? state : "\(state) · \(online.formatted(.list(type: .and))) online"
+    }
+}
+
+/// Where this phone is connected and which PCs share the server.
+struct ConnectionView: View {
+    let device: Device
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Server", value: device.server.host() ?? device.server.absoluteString)
+                LabeledContent("This device", value: device.name)
+                if let problem = model.problem {
+                    Label(problem, systemImage: "wifi.exclamationmark")
+                        .foregroundStyle(.secondary)
+                } else if let updated = model.lastUpdate {
+                    LabeledContent("Last update") {
+                        Text(updated, format: .relative(presentation: .named))
+                    }
+                }
+            }
+            Section {
+                if let status = model.status {
+                    if status.pcs.isEmpty {
+                        Text("No PC is connected to this server yet.")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(status.pcs, id: \.name) { pc in
+                        LabeledContent {
+                            if pc.online {
+                                Label("Online", systemImage: "circle.fill")
+                                    .labelStyle(.titleAndIcon)
+                                    .foregroundStyle(.green)
+                                    .imageScale(.small)
+                            } else if let seen = pc.lastSeen(now: status.now, received: model.statusReceived ?? .now) {
+                                Text("Seen \(seen, format: .relative(presentation: .named))")
+                            } else {
+                                Text("Not seen yet")
+                            }
+                        } label: {
+                            Label(pc.name, systemImage: "desktopcomputer")
+                        }
+                    }
+                } else if model.statusFailed {
+                    Label("Can't reach the server right now.", systemImage: "wifi.exclamationmark")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                }
+            } header: {
+                Text("Your PCs")
+            } footer: {
+                Text("New decks and changes arrive here after a PC syncs.")
+            }
+        }
+        .navigationTitle("Connection")
+        .refreshable { await model.loadStatus() }
+    }
+}
+
+/// Version, where the code and the card data come from, and the licences.
+struct AboutView: View {
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Version", value: Self.version)
+                Link(destination: URL(string: "https://github.com/liehrdot/Conclave-iOS")!) {
+                    Label("Source Code", systemImage: "chevron.left.forwardslash.chevron.right")
+                }
+            }
+            Section("Thanks to") {
+                Link(destination: URL(string: "https://scryfall.com")!) {
+                    LabeledContent("Scryfall", value: "Card data and images")
+                }
+                Link(destination: URL(string: "https://mana.andrewgioia.com")!) {
+                    LabeledContent("Mana by Andrew Gioia", value: "Mana symbols (OFL)")
+                }
+            }
+            Section {
+            } footer: {
+                Text("Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. © Wizards of the Coast LLC.")
+            }
+        }
+        .navigationTitle("About Conclave")
+    }
+
+    /// "0.1.0 (1)": the version and build from the app's Info.plist.
+    static var version: String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(short) (\(build))"
     }
 }
 

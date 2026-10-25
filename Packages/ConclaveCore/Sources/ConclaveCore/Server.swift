@@ -68,10 +68,26 @@ public struct ServerStatus: Decodable, Equatable, Sendable {
         public let online: Bool
         /// Unix time of the PC's last request.
         public let lastSeen: Double?
+
+        public init(name: String, online: Bool, lastSeen: Double?) {
+            self.name = name
+            self.online = online
+            self.lastSeen = lastSeen
+        }
+
+        /// When the PC was last seen, on the phone's clock: the server's age of it (`now - lastSeen`)
+        /// from `received`, so a phone whose clock is off still says "2 hours ago" right.
+        public func lastSeen(now serverNow: Double?, received: Date = .now) -> Date? {
+            guard let lastSeen else { return nil }
+            guard let serverNow else { return Date(timeIntervalSince1970: lastSeen) }
+            return received.addingTimeInterval(-max(0, serverNow - lastSeen))
+        }
     }
 
     public let etag: String
     public let pcs: [PC]
+    /// The server's clock (Unix time) when it answered.
+    public let now: Double?
 }
 
 /// The answer of `GET /api/app/data`.
