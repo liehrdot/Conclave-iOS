@@ -162,7 +162,7 @@ private struct ResultPicker: View {
             pick(key)
         } label: {
             VStack(spacing: 4) {
-                Image(systemName: symbol).font(.title2)
+                Image(systemName: symbol).font(.title2).frame(height: 30) // the same height for every symbol, so the three line up
                 Text(labels[key] ?? fallback).font(.headline)
             }
             .foregroundStyle(picked ? .black : .primary)
