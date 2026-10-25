@@ -11,6 +11,9 @@ set -euo pipefail
 app="$1"
 out="$2"
 SCREENS=(welcome code scan signed-off decks deck rule0 card opponents opponent settings)
+# The look-and-feel variants (`Look` in the app, environment variable CONCLAVE_LOOK) on the screens they change.
+LOOKS=(gallery brand glass)
+LOOK_SCREENS=(decks deck)
 DEVICES=("iPhone" "iPad")
 bundle=app.conclave.mobile
 
@@ -20,6 +23,15 @@ mkdir -p "$out"
 runtime=$(xcrun simctl list runtimes available -j |
   jq -r '[.runtimes[] | select(.platform == "iOS")] | sort_by(.version | split(".") | map(tonumber)) | last | .identifier')
 echo "Runtime: $runtime"
+
+# shoot <screen> <look> <seconds to wait> <file name>
+shoot() {
+  xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
+  SIMCTL_CHILD_CONCLAVE_SCREEN="$1" SIMCTL_CHILD_CONCLAVE_LOOK="$2" xcrun simctl launch "$udid" "$bundle" >/dev/null
+  sleep "$3"
+  xcrun simctl io "$udid" screenshot --type=png "$out/$4" >/dev/null
+  echo "  $4"
+}
 
 for kind in "${DEVICES[@]}"; do
   udid=$(xcrun simctl list devices available -j |
@@ -40,12 +52,14 @@ for kind in "${DEVICES[@]}"; do
   for appearance in light dark; do
     xcrun simctl ui "$udid" appearance "$appearance"
     for screen in "${SCREENS[@]}"; do
-      xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
-      SIMCTL_CHILD_CONCLAVE_SCREEN="$screen" xcrun simctl launch "$udid" "$bundle" >/dev/null
-      sleep 4 # first launch, keyboard-free: long enough for the first frame and its animations
-      [ "$screen" = card ] && sleep 4 # the card picture comes from Scryfall
-      xcrun simctl io "$udid" screenshot --type=png "$out/$slug-$appearance-$screen.png" >/dev/null
-      echo "  $slug-$appearance-$screen.png"
+      wait=4 # first launch, keyboard-free: long enough for the first frame and its animations
+      [ "$screen" = card ] && wait=8 # the card picture comes from Scryfall
+      shoot "$screen" today "$wait" "$slug-$appearance-$screen.png"
+    done
+    for look in "${LOOKS[@]}"; do
+      for screen in "${LOOK_SCREENS[@]}"; do
+        shoot "$screen" "$look" 8 "$slug-$appearance-look-$look-$screen.png" # the art comes from Scryfall
+      done
     done
   done
   xcrun simctl shutdown "$udid"

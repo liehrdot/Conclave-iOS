@@ -5,6 +5,7 @@ import SwiftUI
 struct DecksView: View {
     let device: Device
     @Environment(AppModel.self) private var model
+    @Environment(\.look) private var look
     @State private var path: [String] = ["deck", "rule0", "card"].contains(AppModel.startScreen)
         ? [AppModel.demo?.decks.first?.slug].compactMap { $0 } : []
 
@@ -12,12 +13,31 @@ struct DecksView: View {
         NavigationStack(path: $path) {
             Group {
                 if let decks = model.library?.decks, !decks.isEmpty {
-                    List {
-                        section("Pinned", decks.filter { $0.pinned && !$0.shelved })
-                        section("Decks", decks.filter { !$0.pinned && !$0.shelved })
-                        section("Paused", decks.filter(\.shelved))
+                    Group {
+                        switch look {
+                        case .gallery, .glass:
+                            DeckTiles(groups: groups(decks))
+                        default:
+                            List {
+                                ForEach(groups(decks)) { group in
+                                    Section {
+                                        ForEach(group.decks) { deck in
+                                            NavigationLink(value: deck.slug) {
+                                                if look == .brand { BrandDeckRow(deck: deck) } else { DeckRow(deck: deck) }
+                                            }
+                                            .modifier(LookRow())
+                                        }
+                                    } header: {
+                                        LookHeader(group.title)
+                                    }
+                                }
+                            }
+                            .modifier(LookList(commander: ""))
+                        }
                     }
                     .refreshable { await model.refresh() }
+                    // the commanders' art in one request
+                    .task(id: decks.count) { await model.cards.prefetch(decks.flatMap(\.commanders)) }
                 } else {
                     LibraryPlaceholder(empty: ("No Decks Yet", "rectangle.stack", "Decks you build on your PC show up here."))
                 }
@@ -39,15 +59,13 @@ struct DecksView: View {
         }
     }
 
-    @ViewBuilder
-    private func section(_ title: String, _ decks: [Deck]) -> some View {
-        if !decks.isEmpty {
-            Section(title) {
-                ForEach(decks) { deck in
-                    NavigationLink(value: deck.slug) { DeckRow(deck: deck) }
-                }
-            }
-        }
+    /// Pinned, the rest, paused; empty groups left out.
+    private func groups(_ decks: [Deck]) -> [DeckGroup] {
+        [
+            DeckGroup(title: "Pinned", decks: decks.filter { $0.pinned && !$0.shelved }),
+            DeckGroup(title: "Decks", decks: decks.filter { !$0.pinned && !$0.shelved }),
+            DeckGroup(title: "Paused", decks: decks.filter(\.shelved)),
+        ].filter { !$0.decks.isEmpty }
     }
 }
 
@@ -89,6 +107,7 @@ struct DeckRow: View {
 struct DeckView: View {
     let deck: Deck
     @Environment(AppModel.self) private var model
+    @Environment(\.look) private var look
     @State private var showingRule0 = AppModel.startScreen == "rule0"
     /// The card whose sheet is open; the screenshot opens the demo deck's foil.
     @State private var shownCard: ShownCard? = AppModel.startScreen == "card" ? ShownCard(name: "Birds of Paradise") : nil
@@ -101,24 +120,35 @@ struct DeckView: View {
                 if shownCards.isEmpty && shownMaybe.isEmpty {
                     ContentUnavailableView.search(text: query)
                 }
-            } else {
+            } else if look == .today {
                 summary
+            } else {
+                DeckHeader(deck: deck, showCard: { shownCard = ShownCard(name: $0) }, showRule0: { showingRule0 = true })
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
 
             ForEach(categories) { category in
-                Section("\(category.name) · \(category.count)") {
-                    ForEach(category.cards, id: \.self) { row($0) }
+                Section {
+                    ForEach(category.cards, id: \.self) { row($0).modifier(LookRow()) }
+                } header: {
+                    LookHeader("\(category.name) · \(category.count)")
                 }
             }
 
             if !shownMaybe.isEmpty {
-                Section("Maybe") {
-                    ForEach(shownMaybe, id: \.self) { row($0) }
+                Section {
+                    ForEach(shownMaybe, id: \.self) { row($0).modifier(LookRow()) }
+                } header: {
+                    LookHeader("Maybe")
                 }
             }
         }
+        .modifier(LookList(commander: deck.commanders.first ?? ""))
         .searchable(text: $query, prompt: "Cards in this deck")
         .navigationTitle(deck.name)
+        .navigationBarTitleDisplayMode(look == .today ? .automatic : .inline)
         .refreshable { await model.refresh() }
         .sheet(isPresented: $showingRule0) { Rule0View(deck: deck) }
         .sheet(item: $shownCard) { shown in
@@ -241,9 +271,15 @@ struct CardRow: View {
     let card: Deck.Card
     /// The person's copies placed in this deck.
     let copies: [CollectionEntry]
+    @Environment(\.look) private var look
 
     var body: some View {
         HStack {
+            if look != .today {
+                CardArt(name: card.name)
+                    .frame(width: 44, height: 32)
+                    .clipShape(.rect(cornerRadius: look == .brand ? 3 : 6))
+            }
             Text(card.name)
             Spacer()
             if copies.contains(where: \.foil) {

@@ -17,6 +17,8 @@ struct ConclaveApp: App {
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var phase
+    /// The look picked in Settings (a draft for comparing; see `Look`).
+    @AppStorage(Look.key) private var savedLook = Look.today.rawValue
     /// How often an open app asks for news (the PWA's status poll is a minute too). Each ask is cheap:
     /// an unchanged read model answers 304 without a body.
     private static let checkEvery: Duration = .seconds(60)
@@ -29,6 +31,7 @@ struct RootView: View {
                 WelcomeView(entering: AppModel.startScreen == "code", scanning: AppModel.startScreen == "scan", notice: model.notice)
             }
         }
+        .environment(\.look, Look.launchChoice ?? Look(rawValue: savedLook) ?? .today)
         // on opening, on every return to the app and once a minute while it is open; never in the background.
         // A 401 on the way (signed off on the PC) leads back to the welcome screen.
         .task(id: phase) {

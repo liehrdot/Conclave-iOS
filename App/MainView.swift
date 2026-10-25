@@ -77,10 +77,28 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var confirming = false
+    @AppStorage(Look.key) private var savedLook = Look.today.rawValue
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker("Look", selection: $savedLook) {
+                        ForEach(Look.allCases) { look in
+                            VStack(alignment: .leading) {
+                                Text(look.title)
+                                Text(look.blurb).font(.caption).foregroundStyle(.secondary)
+                            }
+                            .tag(look.rawValue)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                } header: {
+                    Text("Look (Preview)")
+                } footer: {
+                    Text("Try the looks on the Decks tab. Only in this preview build.")
+                }
                 if model.inDemo {
                     Section {
                         Label("This is a made-up account to look around in. Nothing here is sent anywhere.", systemImage: "theatermasks")
