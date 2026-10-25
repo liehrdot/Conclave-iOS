@@ -45,15 +45,13 @@ extension AppModel {
 
     /// The real app keeps the device in the Keychain; a screenshot starts from a made-up state instead.
     static func launch() -> AppModel {
-        switch startScreen {
+        let model = switch startScreen {
         case nil: AppModel(store: KeychainDeviceStore(), transport: URLSession.conclave())
         case "paired": AppModel(store: MemoryDeviceStore(.sample), transport: URLSession.conclave())
-        case "signed-off":
-            let model = AppModel(store: MemoryDeviceStore(), transport: URLSession.conclave())
-            model.notice = ServerError.signedOff.message
-            return model
         default: AppModel(store: MemoryDeviceStore(), transport: URLSession.conclave())
         }
+        if startScreen == "signed-off" { model.notice = ServerError.signedOff.message }
+        return model
     }
 }
 
