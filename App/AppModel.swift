@@ -46,7 +46,8 @@ final class AppModel {
     private func showDemo() {
         device = .demo
         library = Self.demo
-        problem = nil
+        // never "Loading…" forever: the core tests check that demo.json decodes, this is the last guard
+        problem = Self.demo == nil ? "The demo couldn't be opened." : nil
     }
 
     /// Back to the welcome screen, to pair with the PC.
