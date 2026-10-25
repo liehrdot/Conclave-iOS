@@ -49,17 +49,21 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   `confirm(etag:)` drops sent ops once a read model's seq covers their ack, `undo` (drop if unsent, else `inverse` = `INVERSE`).
   `Optimistic.apply(ops, to:)` = the read model as it will look once the server has the outbox's ops (`data.js` `apply()` +
   `recompute()`, on the raw JSON): games and opponent decks so far, checked against every matching `ops.json` case.
+  `GameDraft` = the "Log a Game" form's state and rules (`forms.js` game sheet: rematch within 8 h, `setResult`, `setPlace` fills
+  the last place and decides win/loss, `payload` = `game.add`). `ReadModelCache.loadJSON()` = the raw saved copy for `Optimistic`.
   `Mana.pieces` splits `{2}{B}`/`{T}` text into symbols (`Kind`, `spoken` for VoiceOver).
-- App: `AppModel` (paired device, `library` = the read model from `ReadModelCache`, `refresh()` on opening, on
+- App: `AppModel` (paired device, `library` = the read model from `ReadModelCache` with the outbox's `ops` applied
+  (`Optimistic`), `save(type, payload)` = queue + show + send, `send()` flushes and refreshes after a batch, `refresh()` on opening, on
   return and every minute via `Connection.refresh`; a 401 leads back to the welcome screen), `RootView` (welcome or
   `MainView`), `WelcomeView` → `ScanView` (VisionKit QR) or `EnterCodeView`; `MainView` = tabs Decks (`DecksView` →
-  `DeckView` → `Rule0View` sheet, `CardSheet` per card: the own copy's printing (foil sheen, several copies to pick),
+  `DeckView` → `Rule0View` sheet, `LogGameView` sheet ("Log a Game": result, opponents via `OpponentPicker`,
+  places, "More Details"), `CardSheet` per card: the own copy's printing (foil sheen, several copies to pick),
   else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`), `SettingsView` from the gear (a short list like the iPhone's Settings: Connection row › `ConnectionView` (server, this
   device, last update, "Your PCs" from `AppModel.loadStatus()` = `GET /api/app/status`, `ServerStatus.PC.lastSeen(now:)` on the
   server's clock), "Open the Web App", About Conclave › `AboutView` (version, source, Scryfall, Mana, Fan Content Policy), Sign Out).
   Screens for screenshots: `welcome`, `code`, `scan` (the simulator has no camera: "No Camera"), `signed-off`, and
   with the made-up account `App/Resources/demo.json` (written by `scripts/make_demo.py` from the web app's demo):
-  `decks`, `deck`, `rule0`, `card` (the foil Birds of Paradise placed in the first deck; picture from Scryfall),
+  `decks`, `deck`, `rule0`, `log-game` (a filled-in loss), `card` (the foil Birds of Paradise placed in the first deck; picture from Scryfall),
   `opponents`, `opponent`, `settings` (the demo's settings) (`AppModel.launch()`, no Keychain).
   Demo mode: "No PC at hand? Try the Demo" on the welcome screen = `AppModel.startDemo()`: the same `demo.json` with
   the stand-in `Device.demo` (never saved, no token, `refresh()` skips it), kept across launches in UserDefaults
