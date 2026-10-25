@@ -41,6 +41,7 @@ struct OpponentsView: View {
                 }
             }
         }
+        .outboxStatus()
     }
 }
 
