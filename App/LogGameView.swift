@@ -375,7 +375,7 @@ private enum Medal {
     var fill: Color {
         switch self {
         case .gold: Color(light: 0xD9B44A, dark: 0xE3C46A)
-        case .silver: Color(light: 0xB9C0C8, dark: 0xC9CED6)
+        case .silver: Color(light: 0xA3ABB5, dark: 0xC9CED6)
         case .bronze: Color(light: 0xC58B5C, dark: 0xD49A6A)
         }
     }
