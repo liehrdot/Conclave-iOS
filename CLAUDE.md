@@ -44,7 +44,9 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   Cards: the read model has only names, so `Scryfall` (an actor: `/cards/collection` in batches of 75 asked by the
   front face, requests ≥ 100 ms apart, `Accept` + `User-Agent`) looks them up into `Card` (faces, Oracle text,
   default printing's pictures); `CardLibrary` keeps them on disk by name (`prefetch` when a deck opens, `clear()` on
-  sign-out). `Outbox` (an actor, kept in a file) = the phone's changes on their way to the server, like the web app's
+  sign-out; `remember` keeps a search's English cards). Search (`scry.js` `searchQuery()`/`searchCards()`): `Scryfall.search(query, page:)` =
+  one `SearchPage` (`order=edhrec`, 404 = no hits, 400 = `CardError.badQuery`, "+" sent encoded), `find(name:)` = `NameHit`s for a typed
+  English or German name (multilingual search + autocomplete, `exactFirst`). `Outbox` (an actor, kept in a file) = the phone's changes on their way to the server, like the web app's
   `data.js`: `add`, `flush(to:)` (`POST /api/app/ops`, batches of 50, backoff 5 s → 5 min, `retry` stays, refused → `failed`),
   `confirm(etag:)` drops sent ops once a read model's seq covers their ack, `undo` (drop if unsent, else `inverse` = `INVERSE`).
   `Optimistic.apply(ops, to:)` = the read model as it will look once the server has the outbox's ops (`data.js` `apply()` +

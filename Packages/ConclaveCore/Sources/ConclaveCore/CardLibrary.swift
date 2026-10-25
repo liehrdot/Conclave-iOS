@@ -51,6 +51,17 @@ public actor CardLibrary {
         save()
     }
 
+    /// Keeps cards a search brought (English ones only: the library shows every card in English), so
+    /// their card sheet opens at once and offline.
+    public func remember(_ found: [Card]) {
+        load()
+        for card in found where card.lang == "en" {
+            cards[card.name] = card
+            cards[card.front] = card
+        }
+        save()
+    }
+
     /// Forgets the saved cards (signing out: they came with that account's decks).
     public func clear() {
         cards = [:]

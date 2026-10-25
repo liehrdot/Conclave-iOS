@@ -50,6 +50,8 @@ struct ScryfallCard: Decodable {
 
     var name: String
     var lang: String?
+    /// The name printed on a card in another language ("Seelenwächter"); only on such printings.
+    var printedName: String?
     var manaCost: String?
     var typeLine: String?
     var oracleText: String?
