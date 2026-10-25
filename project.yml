@@ -1,0 +1,43 @@
+# XcodeGen turns this file into Conclave.xcodeproj (`xcodegen generate`). The project file itself
+# is not in git: it is long, generated and hard to review, this file says the same in a few lines.
+name: Conclave
+options:
+  bundleIdPrefix: app.conclave
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  ConclaveCore:
+    path: Packages/ConclaveCore
+targets:
+  Conclave:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes: [Info.plist]
+    dependencies:
+      - package: ConclaveCore
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Conclave
+        UILaunchScreen: {}
+        ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.conclave.mobile
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
