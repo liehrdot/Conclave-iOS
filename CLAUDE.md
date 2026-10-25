@@ -33,6 +33,11 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   `JSONValue` keeps any JSON as it came (the read model has keys the app doesn't model).
   `Server` is the phone API (claim, read model with `If-None-Match`, status, sign off) over a `Transport`
   (`URLSession.conclave()`: no URL cache, no cookies; tests use `FakeTransport`), errors as `ServerError`.
+  `Connection.pair`/`signOff` = parse, claim, save in a `DeviceStore` (the app's is `KeychainDeviceStore`), with
+  the English sentences the app shows (`Connection.message(for:)`).
+- App: `AppModel` (paired device), `RootView` (welcome or paired), `WelcomeView` → `ScanView` (VisionKit QR) or
+  `EnterCodeView`. Screens for screenshots: `welcome`, `code`, `paired` (`AppModel.launch()`, no Keychain).
+  Colours: `AccentColor` = dark green in light mode, neon in dark (text, icons); `Neon` = fills, always with black text.
 - `Packages/ConclaveCore/Tests/ConclaveCoreTests/Resources/ops.json`: Conclave's shared operation cases
   (`docs/app-api.md` there), copied at the commit in `ops.rev` by `scripts/update_api_cases.sh <full hash>`.
   Re-run it when Conclave's `appops.py` changes; the core's operation code must pass every case.

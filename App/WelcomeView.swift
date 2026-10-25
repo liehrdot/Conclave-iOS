@@ -1,53 +1,70 @@
 import ConclaveCore
 import SwiftUI
 
-/// The first screen: what the app is and where pairing will happen. For now it only checks a
-/// pairing link or code with `Pairing.parse`, so the core package is wired in from day one;
-/// connecting to the server follows in milestone 1.
+/// The first screen of an unpaired phone: what the app is, and the two ways to pair it.
+/// Scanning comes first because the PC shows a QR code; typing the code is the fallback.
 struct WelcomeView: View {
-    @State private var link = ""
-    @State private var server = ""
+    @State private var scanning = false
+    @State private var entering: Bool
 
-    private var pairing: Pairing? { Pairing.parse(link, server: server) }
+    init(entering: Bool = false) {
+        _entering = State(initialValue: entering)
+    }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Image(systemName: "rectangle.stack.fill")
-                            .font(.largeTitle)
-                            .foregroundStyle(.tint)
-                        Text("Your decks, opponents and collection, soon right on your iPhone.")
-                            .font(.headline)
-                    }
-                    .padding(.vertical, 4)
-                }
-                Section {
-                    TextField("Link or code", text: $link)
-                        .textInputAutocapitalization(.characters)
-                        .autocorrectionDisabled()
-                    TextField("Server (only with a code)", text: $server)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                } header: {
-                    Text("Pair")
-                } footer: {
-                    Text("On your PC: Settings › Sync › Pair a device.")
-                }
-                if let pairing {
-                    Section("Recognized") {
-                        LabeledContent("Server", value: pairing.server.host() ?? "")
-                        LabeledContent("Code", value: pairing.code)
-                    }
-                }
+        VStack(spacing: 0) {
+            Spacer()
+            VStack(spacing: 16) {
+                Image(systemName: "rectangle.stack.fill")
+                    .font(.system(size: 56))
+                    .foregroundStyle(.tint)
+                    .accessibilityHidden(true)
+                Text("Conclave")
+                    .font(.largeTitle.bold())
+                Text("Your decks, opponents and games from your PC, with you at the table.")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            .navigationTitle("Conclave")
+            Spacer()
+            VStack(spacing: 12) {
+                Button {
+                    scanning = true
+                } label: {
+                    Label("Scan QR Code", systemImage: "qrcode.viewfinder")
+                        .font(.headline)
+                        .foregroundStyle(.black) // black on the neon, like the PWA: white on it is unreadable
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color("Neon"))
+                .controlSize(.large)
+
+                Button("Enter Code") {
+                    entering = true
+                }
+                .font(.headline)
+                .controlSize(.large)
+
+                Text("On your PC: Settings › Sync › Pair a device.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 8)
+        .frame(maxWidth: 480)
+        .sheet(isPresented: $entering) {
+            EnterCodeView()
+        }
+        .fullScreenCover(isPresented: $scanning) {
+            ScanView()
         }
     }
 }
 
 #Preview {
     WelcomeView()
+        .environment(AppModel(store: MemoryDeviceStore(), transport: URLSession.conclave()))
 }
