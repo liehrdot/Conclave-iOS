@@ -40,4 +40,6 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
 - No AI features (Flo's rule for Conclave). The one exception is the existing „Beschreiben“ card
   search through the sync server. Apple's Vision text recognition for the scanner is fine: it reads
   text on the phone, like Tesseract does in the web app.
+- The macOS jobs are pinned to `macos-26` and Xcode 26.6 (`XCODE` in `ci.yml` and `codeql.yml`): CodeQL can't read Swift
+  built with Xcode 27, and Xcode 27 changes the app's look (iOS 27 glass). Move to it only on purpose, in both files.
 - No third-party UI libraries; add a dependency only where Apple has nothing.

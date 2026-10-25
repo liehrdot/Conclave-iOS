@@ -6,6 +6,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Pinned on purpose, not "the newest": CodeQL cannot read Swift built with Xcode 27 (GitHub, 2026-10-19),
+# and Xcode 27 brings iOS 27's new Liquid Glass to the app. Moving to it is a decision, made here, in all workflows.
+env:
+  XCODE: "26.6"
+
 permissions:
   contents: read
 
@@ -21,14 +26,13 @@ jobs:
 
   # the app itself needs a Mac: GitHub's runner is ours
   ios:
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Pick the newest Xcode
+      - name: Use Xcode ${{ env.XCODE }}
         run: |
-          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
-          sudo xcode-select -s "$xcode"
+          sudo xcode-select -s "/Applications/Xcode_${XCODE}.app"
           xcodebuild -version
       - run: brew install xcodegen
       - run: xcodegen generate
@@ -53,14 +57,13 @@ jobs:
 
   # how the screens look, light and dark, iPhone and iPad: the PR's "Artifacts" hold the pictures
   screenshots:
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Pick the newest Xcode
+      - name: Use Xcode ${{ env.XCODE }}
         run: |
-          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
-          sudo xcode-select -s "$xcode"
+          sudo xcode-select -s "/Applications/Xcode_${XCODE}.app"
           xcodebuild -version
       - run: brew install xcodegen
       - run: xcodegen generate
