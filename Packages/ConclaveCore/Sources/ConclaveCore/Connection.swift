@@ -48,6 +48,22 @@ public enum Connection {
         try? await Server(device: device, transport: transport).signOff()
         store.clear()
     }
+
+    /// Asks the server whether this phone is still paired, and forgets it here when the PC signed it
+    /// off (401), like `data.js` does on a 401 anywhere. Offline or any other error: still paired, so a
+    /// phone without signal at the table keeps its decks. Returns false only when it was signed off.
+    public static func stillPaired(_ device: Device, store: any DeviceStore, transport: any Transport) async -> Bool {
+        do {
+            _ = try await Server(device: device, transport: transport).status()
+            return true
+        } catch ServerError.signedOff {
+            // only the device that was asked: it may have been paired again meanwhile
+            if store.load()?.id == device.id { store.clear() }
+            return false
+        } catch {
+            return true
+        }
+    }
 }
 
 extension Connection {

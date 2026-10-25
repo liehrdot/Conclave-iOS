@@ -6,8 +6,11 @@ import SwiftUI
 struct WelcomeView: View {
     @State private var scanning: Bool
     @State private var entering: Bool
+    /// Why the phone isn't paired any more (signed off on the PC).
+    let notice: String?
 
-    init(entering: Bool = false, scanning: Bool = false) {
+    init(entering: Bool = false, scanning: Bool = false, notice: String? = nil) {
+        self.notice = notice
         _entering = State(initialValue: entering)
         _scanning = State(initialValue: scanning)
     }
@@ -26,6 +29,13 @@ struct WelcomeView: View {
                     .font(.title3)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                if let notice {
+                    Label(notice, systemImage: "person.crop.circle.badge.xmark")
+                        .font(.callout)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(.fill.tertiary, in: .rect(cornerRadius: 16))
+                }
             }
             Spacer()
             VStack(spacing: 12) {
