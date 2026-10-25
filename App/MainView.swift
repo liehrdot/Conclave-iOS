@@ -15,17 +15,41 @@ struct MainView: View {
 
     var body: some View {
         TabView(selection: $page) {
-            Tab("Decks", systemImage: "rectangle.stack", value: Page.decks) {
+            Tab(value: Page.decks) {
                 DecksView(device: device)
+            } label: {
+                TabLabel("Decks", systemImage: "rectangle.stack")
             }
-            Tab("Opponents", systemImage: "person.2", value: Page.opponents) {
+            Tab(value: Page.opponents) {
                 OpponentsView(device: device)
+            } label: {
+                TabLabel("Opponents", systemImage: "person.2")
             }
             Tab("Cards", systemImage: "magnifyingglass", value: Page.cards, role: .search) {
                 CardsView(device: device)
             }
         }
         .tabViewStyle(.sidebarAdaptable) // a sidebar on the iPad, a tab bar on the iPhone
+    }
+}
+
+/// A tab's name and symbol, the symbol a size smaller: while the search tab is open, iOS folds the
+/// other tabs into one round button, and wide symbols like `person.2` crowd it at the normal size.
+private struct TabLabel: View {
+    let title: String
+    let systemImage: String
+
+    init(_ title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage).imageScale(.small)
+        }
     }
 }
 
