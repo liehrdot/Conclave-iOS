@@ -18,12 +18,12 @@ struct MainView: View {
             Tab(value: Page.decks) {
                 DecksView(device: device)
             } label: {
-                TabLabel("Decks", systemImage: "rectangle.stack")
+                TabLabel("Decks", systemImage: "rectangle.stack.fill")
             }
             Tab(value: Page.opponents) {
                 OpponentsView(device: device)
             } label: {
-                TabLabel("Opponents", systemImage: "person.2")
+                TabLabel("Opponents", systemImage: "person.2.fill")
             }
             Tab("Cards", systemImage: "magnifyingglass", value: Page.cards, role: .search) {
                 CardsView(device: device)
@@ -33,23 +33,41 @@ struct MainView: View {
     }
 }
 
-/// A tab's name and symbol, the symbol a size smaller: while the search tab is open, iOS folds the
-/// other tabs into one round button, and wide symbols like `person.2` crowd it at the normal size.
+/// A tab's name and symbol, the symbol drawn to fit a fixed box. While the search tab is open, iOS
+/// folds the other tabs into one round button and draws a symbol there at the height of its text, so
+/// a wide one like `person.2` fills the button edge to edge (and iOS ignores `imageScale` there). A
+/// plain picture is drawn at its own size, so the symbol goes in as one, fitted into `box`. Template
+/// rendering keeps iOS's colours for the picked and the other tabs.
 private struct TabLabel: View {
     let title: String
-    let systemImage: String
+    let image: UIImage
+
+    /// The space a tab symbol may take, in points: about what `rectangle.stack` takes on its own.
+    private static let box = CGSize(width: 24, height: 20)
 
     init(_ title: String, systemImage: String) {
         self.title = title
-        self.systemImage = systemImage
+        image = Self.fitted(systemImage)
     }
 
     var body: some View {
         Label {
             Text(title)
         } icon: {
-            Image(systemName: systemImage).imageScale(.small)
+            Image(uiImage: image)
         }
+    }
+
+    private static func fitted(_ name: String) -> UIImage {
+        let config = UIImage.SymbolConfiguration(pointSize: 40, weight: .medium)
+        guard let symbol = UIImage(systemName: name, withConfiguration: config) else { return UIImage() }
+        let scale = min(box.width / symbol.size.width, box.height / symbol.size.height)
+        let size = CGSize(width: symbol.size.width * scale, height: symbol.size.height * scale)
+        let origin = CGPoint(x: (box.width - size.width) / 2, y: (box.height - size.height) / 2)
+        let drawn = UIGraphicsImageRenderer(size: box).image { _ in
+            symbol.withTintColor(.black).draw(in: CGRect(origin: origin, size: size))
+        }
+        return drawn.withRenderingMode(.alwaysTemplate)
     }
 }
 
