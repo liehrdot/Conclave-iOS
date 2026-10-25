@@ -1,0 +1,4 @@
+name: Conclave iOS CodeQL
+paths-ignore:
+  - Packages/ConclaveCore/Tests
+  - scripts
