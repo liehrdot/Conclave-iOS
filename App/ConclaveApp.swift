@@ -39,6 +39,6 @@ struct RootView: View {
             }
         }
         // a haptic for the outcome, not for the tap (the research's rule): the moment pairing worked
-        .sensoryFeedback(.success, trigger: model.device?.id) { old, new in old == nil && new != nil }
+        .sensoryFeedback(.success, trigger: model.device?.id) { old, new in old == nil && new != nil && new != Device.demo.id }
     }
 }

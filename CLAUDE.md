@@ -53,7 +53,10 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   Screens for screenshots: `welcome`, `code`, `scan` (the simulator has no camera: "No Camera"), `signed-off`, and
   with the made-up account `App/Resources/demo.json` (written by `scripts/make_demo.py` from the web app's demo):
   `decks`, `deck`, `rule0`, `card` (the foil Birds of Paradise placed in the first deck; picture from Scryfall),
-  `opponents`, `opponent` (`AppModel.launch()`, no Keychain).
+  `opponents`, `opponent`, `settings` (the demo's settings) (`AppModel.launch()`, no Keychain).
+  Demo mode: "No PC at hand? Try the Demo" on the welcome screen = `AppModel.startDemo()`: the same `demo.json` with
+  the stand-in `Device.demo` (never saved, no token, `refresh()` skips it), kept across launches in UserDefaults
+  `demo` like the PWA's `amtisch.mode`; "Demo" in the top bar (`DemoBadge`) and Settings › "Leave Demo".
   Mana symbols: `ManaText` draws `ManaGlyphs` (circles + the Mana font's glyphs, SVGs in `Assets.xcassets/Mana`,
   OFL licence in `App/Resources/Mana-LICENSE.txt`) inline in a `Text`. `CardImages` caches card pictures on disk
   (`returnCacheDataElseLoad`, 300 MB in Caches).

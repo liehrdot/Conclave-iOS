@@ -10,7 +10,7 @@ set -euo pipefail
 
 app="$1"
 out="$2"
-SCREENS=(welcome code scan signed-off decks deck rule0 card opponents opponent)
+SCREENS=(welcome code scan signed-off decks deck rule0 card opponents opponent settings)
 DEVICES=("iPhone" "iPad")
 bundle=app.conclave.mobile
 

@@ -14,6 +14,8 @@ final class AppModel {
     private(set) var problem: String?
     /// Why the phone is no longer paired, when the PC signed it off; shown on the welcome screen.
     private(set) var notice: String?
+    /// The made-up account from the welcome screen ("Try the Demo"): nothing is sent anywhere.
+    var inDemo: Bool { device == .demo }
     /// Card texts and Scryfall's printings, looked up by name (the read model has only names).
     let cards: CardLibrary
     private let store: any DeviceStore
@@ -27,10 +29,38 @@ final class AppModel {
         self.transport = transport
         device = store.load()
         library = cache?.load()?.model
+        // the demo stays on across launches until "Leave Demo", like the PWA's `amtisch.mode`
+        if device == nil, UserDefaults.standard.bool(forKey: Self.demoKey) { showDemo() }
+    }
+
+    private static let demoKey = "demo"
+
+    /// Opens the made-up account. It replaces nothing: pairing later starts from the welcome screen.
+    func startDemo() {
+        guard device == nil else { return }
+        UserDefaults.standard.set(true, forKey: Self.demoKey)
+        notice = nil
+        showDemo()
+    }
+
+    private func showDemo() {
+        device = .demo
+        library = Self.demo
+        problem = nil
+    }
+
+    /// Back to the welcome screen, to pair with the PC.
+    func leaveDemo() async {
+        guard inDemo else { return }
+        UserDefaults.standard.removeObject(forKey: Self.demoKey)
+        device = nil
+        library = nil
+        await cards.clear()
     }
 
     /// A scanned or typed pairing link or code. Throws what `Connection.message(for:)` explains.
     func pair(_ text: String, server: String = "") async throws {
+        if inDemo { await leaveDemo() }
         device = try await Connection.pair(text, server: server, name: UIDevice.current.model, store: store, transport: transport)
         notice = nil
         await refresh()
@@ -38,7 +68,7 @@ final class AppModel {
 
     /// Fetches a newer read model; goes back to the welcome screen when the PC signed this phone off.
     func refresh() async {
-        guard let device, let cache else { return }
+        guard let device, !inDemo, let cache else { return }
         let outcome = await Connection.refresh(device, store: store, cache: cache, transport: transport)
         guard self.device?.id == device.id else { return } // signed out or paired again meanwhile
         switch outcome {
@@ -58,7 +88,7 @@ final class AppModel {
     }
 
     func signOff() async {
-        guard let device else { return }
+        guard let device, !inDemo else { return await leaveDemo() }
         await Connection.signOff(device, store: store, transport: transport)
         cache?.clear()
         self.device = nil
@@ -72,7 +102,7 @@ extension AppModel {
     /// The screen the CI screenshots open (`CONCLAVE_SCREEN`, scripts/screenshots.sh); nil in normal use.
     static let startScreen = ProcessInfo.processInfo.environment["CONCLAVE_SCREEN"]
     /// Screens that show the made-up account in `demo.json`.
-    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "opponents", "opponent"]
+    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "opponents", "opponent", "settings"]
 
     /// The real app keeps the device in the Keychain and the decks in Application Support (not Caches:
     /// iOS may empty those); a screenshot starts from a made-up state instead.
@@ -84,8 +114,8 @@ extension AppModel {
                             cardFile: URL.applicationSupportDirectory.appending(path: "Cards/cards.json"))
         }
         if demoScreens.contains(screen) {
-            let model = AppModel(store: MemoryDeviceStore(.sample), cache: nil, transport: transport)
-            model.library = demo
+            let model = AppModel(store: MemoryDeviceStore(), cache: nil, transport: transport)
+            model.showDemo()
             return model
         }
         let model = AppModel(store: MemoryDeviceStore(), cache: nil, transport: transport)
@@ -102,7 +132,8 @@ extension AppModel {
 }
 
 extension Device {
-    static let sample = Device(
-        server: URL(string: "https://conclave-cloud.duckdns.org")!, token: "", id: "sample", name: "iPhone", serverID: "sample"
+    /// The demo's stand-in device: never saved, never sent (no token).
+    static let demo = Device(
+        server: URL(string: "https://demo.invalid")!, token: "", id: "demo", name: "iPhone", serverID: "demo"
     )
 }
