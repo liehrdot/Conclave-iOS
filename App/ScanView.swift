@@ -21,7 +21,10 @@ struct ScanView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            // A ZStack with a background, not a Group: modifiers on a Group go to its children, and before
+            // the camera question is answered there are none, so `.task` never ran and iOS never asked.
+            ZStack {
+                Color.black.ignoresSafeArea()
                 if allowed == false || !DataScannerViewController.isSupported {
                     ContentUnavailableView {
                         Label("No Camera", systemImage: "camera")
@@ -48,6 +51,7 @@ struct ScanView: View {
                     .padding()
                 }
             }
+            .environment(\.colorScheme, .dark) // a camera screen is dark in light mode too
             .navigationTitle("Scan QR Code")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -56,6 +60,7 @@ struct ScanView: View {
                 }
             }
             .task {
+                guard DataScannerViewController.isSupported else { return } // no question without a scanner
                 allowed = await AVCaptureDevice.requestAccess(for: .video)
             }
             .alert("Pair with \(pendingHost)?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } })) {

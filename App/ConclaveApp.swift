@@ -21,7 +21,7 @@ struct RootView: View {
             if let device = model.device {
                 PairedView(device: device)
             } else {
-                WelcomeView(entering: AppModel.startScreen == "code")
+                WelcomeView(entering: AppModel.startScreen == "code", scanning: AppModel.startScreen == "scan")
             }
         }
         // a haptic for the outcome, not for the tap (the research's rule): the moment pairing worked
