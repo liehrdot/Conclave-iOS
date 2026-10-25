@@ -272,7 +272,7 @@ final class CardImages: @unchecked Sendable {  // NSCache and URLSession are thr
 
     private init() {
         let config = URLSessionConfiguration.default
-        config.urlCache = URLCache(memoryCapacity: 20 << 20, diskCapacity: 300 << 20,
+        config.urlCache = URLCache(memoryCapacity: 20_000_000, diskCapacity: 300_000_000,
                                    directory: URL.cachesDirectory.appending(path: "CardImages"))
         config.httpCookieStorage = nil
         session = URLSession(configuration: config)
