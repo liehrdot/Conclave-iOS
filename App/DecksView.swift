@@ -78,6 +78,8 @@ struct DeckTiles: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 24)
+                // the container sizes to its content otherwise, so the iPad got two narrow columns
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .background {
@@ -114,6 +116,7 @@ struct DeckTile: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
             }
             Spacer(minLength: 0)
             if deck.legal == false {
