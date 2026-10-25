@@ -93,3 +93,27 @@ import Testing
         #expect(ReadModel.date("yesterday") == nil)
     }
 }
+
+/// The app's demo account (`App/Resources/demo.json`, written by scripts/make_demo.py) must decode:
+/// when it doesn't, "Try the Demo" shows "Loading…" forever.
+@Suite struct DemoAccountTests {
+    static let file = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().appending(path: "../../../../App/Resources/demo.json").standardizedFileURL
+
+    @Test func theDemoDecodes() throws {
+        let model = try ReadModel.decode(try Data(contentsOf: Self.file))
+        #expect(model.decks.count >= 3)
+        #expect(!model.opponents.isEmpty)
+        #expect(!model.games.isEmpty)
+        let first = try #require(model.decks.first)
+        #expect(!model.copies(of: "Birds of Paradise", in: first).isEmpty)  // the `card` screenshot's foil
+        #expect(first.shownRule0.rows.first?.label == "Level")
+    }
+
+    @Test func aDeckNeedsOnlyItsSlugAndName() throws {
+        let model = try ReadModel.decode(Data(#"{"decks": [{"slug": "meren", "name": "Meren"}]}"#.utf8))
+        let deck = try #require(model.decks.first)
+        #expect(deck.cards.isEmpty && deck.maybe.isEmpty && !deck.checking && !deck.pinned)
+        #expect(deck.record.games == 0)
+    }
+}

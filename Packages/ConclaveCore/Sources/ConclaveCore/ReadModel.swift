@@ -146,6 +146,39 @@ public struct Deck: Decodable, Equatable, Sendable, Identifiable {
     public var pinned: Bool
     public var shelved: Bool
 
+    /// Only the slug and name must be there: a key an older server (or the web app's demo) doesn't write yet
+    /// gets its empty value, so one missing flag never hides every deck.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        slug = try c.decode(String.self, forKey: .slug)
+        name = try c.decode(String.self, forKey: .name)
+        commanders = try c.decodeIfPresent([String].self, forKey: .commanders) ?? []
+        colors = try c.decodeIfPresent(String.self, forKey: .colors) ?? ""
+        bracket = try c.decodeIfPresent(Int.self, forKey: .bracket)
+        tier = try c.decodeIfPresent(String.self, forKey: .tier)
+        level = try c.decodeIfPresent(String.self, forKey: .level)
+        levelEn = try c.decodeIfPresent(String.self, forKey: .levelEn)
+        proxy = try c.decodeIfPresent(Bool.self, forKey: .proxy) ?? false
+        legal = try c.decodeIfPresent(Bool.self, forKey: .legal)
+        description = try c.decodeIfPresent(String.self, forKey: .description)
+        version = try c.decodeIfPresent(Int.self, forKey: .version)
+        updated = try c.decodeIfPresent(String.self, forKey: .updated)
+        checking = try c.decodeIfPresent(Bool.self, forKey: .checking) ?? false
+        rule0 = try c.decodeIfPresent(Rule0.self, forKey: .rule0) ?? Rule0(rows: [], text: "")
+        rule0En = try c.decodeIfPresent(Rule0.self, forKey: .rule0En)
+        speed = try c.decodeIfPresent(Speed.self, forKey: .speed)
+        cards = try c.decodeIfPresent([Card].self, forKey: .cards) ?? []
+        maybe = try c.decodeIfPresent([Card].self, forKey: .maybe) ?? []
+        record = try c.decodeIfPresent(Record.self, forKey: .record) ?? Record()
+        pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
+        shelved = try c.decodeIfPresent(Bool.self, forKey: .shelved) ?? false
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case slug, name, commanders, colors, bracket, tier, level, levelEn, proxy, legal, description, version, updated
+        case checking, rule0, rule0En, speed, cards, maybe, record, pinned, shelved
+    }
+
     public struct Card: Decodable, Equatable, Sendable, Hashable {
         public var name: String
         public var qty: Int?

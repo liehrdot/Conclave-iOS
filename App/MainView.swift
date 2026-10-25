@@ -48,7 +48,7 @@ struct LibraryPlaceholder: View {
 /// The toolbar button to the settings, on every tab's first screen.
 struct SettingsButton: View {
     let device: Device
-    @State private var open = false
+    @State private var open = AppModel.startScreen == "settings"
 
     var body: some View {
         Button("Settings", systemImage: "gearshape") { open = true }
@@ -56,7 +56,21 @@ struct SettingsButton: View {
     }
 }
 
-/// Where the phone is connected, and signing out.
+/// "Demo" in the top bar while the made-up account is open, so it is never taken for real data.
+/// A tap opens the settings, where "Leave Demo" is.
+struct DemoBadge: View {
+    let device: Device
+    @State private var open = false
+
+    var body: some View {
+        Button("Demo") { open = true }
+            .font(.subheadline.weight(.semibold))
+            .accessibilityHint("This is a made-up account. Opens the settings.")
+            .sheet(isPresented: $open) { SettingsView(device: device) }
+    }
+}
+
+/// Where the phone is connected, and signing out; in the demo, what it is and "Leave Demo".
 struct SettingsView: View {
     let device: Device
     @Environment(AppModel.self) private var model
@@ -66,18 +80,34 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Connection") {
-                    LabeledContent("Server", value: device.server.host() ?? device.server.absoluteString)
-                    LabeledContent("This device", value: device.name)
-                    if let problem = model.problem {
-                        Label(problem, systemImage: "wifi.exclamationmark")
-                            .foregroundStyle(.secondary)
+                if model.inDemo {
+                    Section {
+                        Label("This is a made-up account to look around in. Nothing here is sent anywhere.", systemImage: "theatermasks")
+                        Button("Leave Demo") {
+                            Task {
+                                await model.leaveDemo()
+                                dismiss()
+                            }
+                        }
+                    } header: {
+                        Text("Demo")
+                    } footer: {
+                        Text("Then pair the app with Conclave on your PC to see your own decks.")
                     }
-                }
-                Section {
-                    Button("Sign Out", role: .destructive) { confirming = true }
-                } footer: {
-                    Text("Your decks stay on your PC.")
+                } else {
+                    Section("Connection") {
+                        LabeledContent("Server", value: device.server.host() ?? device.server.absoluteString)
+                        LabeledContent("This device", value: device.name)
+                        if let problem = model.problem {
+                            Label(problem, systemImage: "wifi.exclamationmark")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Section {
+                        Button("Sign Out", role: .destructive) { confirming = true }
+                    } footer: {
+                        Text("Your decks stay on your PC.")
+                    }
                 }
             }
             .navigationTitle("Settings")

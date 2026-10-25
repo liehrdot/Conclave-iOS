@@ -2,8 +2,10 @@ import ConclaveCore
 import SwiftUI
 
 /// The first screen of an unpaired phone: what the app is, and the two ways to pair it.
-/// Scanning comes first because the PC shows a QR code; typing the code is the fallback.
+/// Scanning comes first because the PC shows a QR code; typing the code is the fallback; the demo
+/// shows the app with a made-up account to anyone without a PC at hand.
 struct WelcomeView: View {
+    @Environment(AppModel.self) private var model
     @State private var scanning: Bool
     @State private var entering: Bool
     /// Why the phone isn't paired any more (signed off on the PC).
@@ -61,6 +63,12 @@ struct WelcomeView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+
+                Button("No PC at hand? Try the Demo") {
+                    model.startDemo()
+                }
+                .font(.subheadline)
+                .padding(.top, 8)
             }
         }
         .padding(.horizontal, 24)

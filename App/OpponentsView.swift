@@ -30,6 +30,9 @@ struct OpponentsView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { SettingsButton(device: device) }
+                if model.inDemo {
+                    ToolbarItem(placement: .topBarLeading) { DemoBadge(device: device) }
+                }
             }
         }
     }
