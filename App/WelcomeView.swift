@@ -18,26 +18,26 @@ struct WelcomeView: View {
                         Image(systemName: "rectangle.stack.fill")
                             .font(.largeTitle)
                             .foregroundStyle(.tint)
-                        Text("Deine Decks, Gegner und Sammlung – bald direkt auf dem iPhone.")
+                        Text("Your decks, opponents and collection, soon right on your iPhone.")
                             .font(.headline)
                     }
                     .padding(.vertical, 4)
                 }
                 Section {
-                    TextField("Link oder Code", text: $link)
+                    TextField("Link or code", text: $link)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
-                    TextField("Server (nur bei einem Code)", text: $server)
+                    TextField("Server (only with a code)", text: $server)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                 } header: {
-                    Text("Koppeln")
+                    Text("Pair")
                 } footer: {
-                    Text("Am PC: Einstellungen › Sync › Gerät koppeln.")
+                    Text("On your PC: Settings › Sync › Pair a device.")
                 }
                 if let pairing {
-                    Section("Erkannt") {
+                    Section("Recognized") {
                         LabeledContent("Server", value: pairing.server.host() ?? "")
                         LabeledContent("Code", value: pairing.code)
                     }

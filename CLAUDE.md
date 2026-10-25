@@ -7,8 +7,8 @@ a Kotlin app for Android follows later on the same contract. Plan:
 https://claude.ai/artifact/G6e75YM2qNj15gbN9Lq4YY
 
 Claude writes the code, Flo reviews every PR and wants to learn from it: keep PRs small and explain
-the why in the description. Code, comments and docs in English; the app's UI text is German, like
-the web app.
+the why in the description. Everything is English: UI text, code, comments, docs (the web app
+stays German).
 
 ## Commands
 
