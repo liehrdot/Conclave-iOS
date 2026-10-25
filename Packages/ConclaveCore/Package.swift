@@ -9,6 +9,10 @@ let package = Package(
     products: [.library(name: "ConclaveCore", targets: ["ConclaveCore"])],
     targets: [
         .target(name: "ConclaveCore"),
-        .testTarget(name: "ConclaveCoreTests", dependencies: ["ConclaveCore"]),
+        .testTarget(
+            name: "ConclaveCoreTests", dependencies: ["ConclaveCore"],
+            // ops.json: Conclave's shared operation cases, ops.rev: the commit they come from
+            resources: [.copy("Resources/ops.json"), .copy("Resources/ops.rev")]
+        ),
     ]
 )
