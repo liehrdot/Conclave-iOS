@@ -89,67 +89,17 @@ struct DeckView: View {
     @State private var showingRule0 = AppModel.startScreen == "rule0"
     /// The card whose sheet is open; the screenshot opens the demo deck's foil.
     @State private var shownCard: ShownCard? = AppModel.startScreen == "card" ? ShownCard(name: "Birds of Paradise") : nil
+    /// What the search field filters the cards by; while it has text only matching cards show.
+    @State private var query = ""
 
     var body: some View {
         List {
-            Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    // tap a commander for its card, like any card in the list
-                    ForEach(deck.commanders, id: \.self) { commander in
-                        Button {
-                            shownCard = ShownCard(name: commander)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(commander)
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .buttonStyle(.plain)
-                        .accessibilityHint("Shows the card")
-                    }
-                    HStack(spacing: 8) {
-                        ColorPips(colors: deck.colors)
-                        if let level = deck.shownLevel { Text(level) }
-                        if deck.proxy { Text("Proxy") }
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    if let description = deck.description, !description.isEmpty {
-                        Text(description)
-                            .font(.subheadline)
-                    }
-                    if deck.checking {
-                        Label("Your PC checks the newest changes next time it syncs.", systemImage: "clock")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
+            if searching {
+                if shownCards.isEmpty && shownMaybe.isEmpty {
+                    ContentUnavailableView.search(text: query)
                 }
-                .padding(.vertical, 4)
-                Button {
-                    showingRule0 = true
-                } label: {
-                    Label("Rule 0", systemImage: "text.bubble")
-                }
-            }
-
-            Section("Record") {
-                if deck.record.games == 0 {
-                    Text("No games yet.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    LabeledContent("Games", value: "\(deck.record.games)")
-                    LabeledContent("Won – lost", value: recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
-                    if let last = ReadModel.date(deck.record.last) {
-                        LabeledContent("Last played") { Text(last, format: .relative(presentation: .named)) }
-                    }
-                }
-                if let speed = deck.speed, let label = speed.shownLabel {
-                    LabeledContent("Speed", value: label)
-                }
+            } else {
+                summary
             }
 
             ForEach(categories) { category in
@@ -158,12 +108,13 @@ struct DeckView: View {
                 }
             }
 
-            if !deck.maybe.isEmpty {
+            if !shownMaybe.isEmpty {
                 Section("Maybe") {
-                    ForEach(deck.maybe, id: \.self) { row($0) }
+                    ForEach(shownMaybe, id: \.self) { row($0) }
                 }
             }
         }
+        .searchable(text: $query, prompt: "Cards in this deck")
         .navigationTitle(deck.name)
         .refreshable { await model.refresh() }
         .sheet(isPresented: $showingRule0) { Rule0View(deck: deck) }
@@ -172,6 +123,77 @@ struct DeckView: View {
         }
         // the deck's cards in one request, so the card view opens at once and works offline later
         .task(id: deck.slug) { await model.cards.prefetch((deck.cards + deck.maybe).map(\.name)) }
+    }
+
+    private var searching: Bool { !query.trimmingCharacters(in: .whitespaces).isEmpty }
+    private func matches(_ card: Deck.Card) -> Bool {
+        !searching || card.name.localizedStandardContains(query.trimmingCharacters(in: .whitespaces))
+    }
+    private var shownCards: [Deck.Card] { deck.cards.filter(matches) }
+    private var shownMaybe: [Deck.Card] { deck.maybe.filter(matches) }
+
+    /// The commander, Rule 0 and the record: hidden while searching, so the matches come first.
+    @ViewBuilder
+    private var summary: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 6) {
+                // tap a commander for its card, like any card in the list
+                ForEach(deck.commanders, id: \.self) { commander in
+                    Button {
+                        shownCard = ShownCard(name: commander)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(commander)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Shows the card")
+                }
+                HStack(spacing: 8) {
+                    ColorPips(colors: deck.colors)
+                    if let level = deck.shownLevel { Text(level) }
+                    if deck.proxy { Text("Proxy") }
+                }
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                if let description = deck.description, !description.isEmpty {
+                    Text(description)
+                        .font(.subheadline)
+                }
+                if deck.checking {
+                    Label("Your PC checks the newest changes next time it syncs.", systemImage: "clock")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+            Button {
+                showingRule0 = true
+            } label: {
+                Label("Rule 0", systemImage: "text.bubble")
+            }
+        }
+
+        Section("Record") {
+            if deck.record.games == 0 {
+                Text("No games yet.")
+                    .foregroundStyle(.secondary)
+            } else {
+                LabeledContent("Games", value: "\(deck.record.games)")
+                LabeledContent("Won – lost", value: recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
+                if let last = ReadModel.date(deck.record.last) {
+                    LabeledContent("Last played") { Text(last, format: .relative(presentation: .named)) }
+                }
+            }
+            if let speed = deck.speed, let label = speed.shownLabel {
+                LabeledContent("Speed", value: label)
+            }
+        }
     }
 
     private func row(_ card: Deck.Card) -> some View {
@@ -199,7 +221,7 @@ struct DeckView: View {
     private var categories: [Category] {
         var order: [String] = []
         var groups: [String: [Deck.Card]] = [:]
-        for card in deck.cards {
+        for card in shownCards {
             let name = card.category.flatMap { $0.isEmpty ? nil : $0 } ?? "Other"
             if groups[name] == nil { order.append(name) }
             groups[name, default: []].append(card)
