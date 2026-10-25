@@ -49,8 +49,9 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   return and every minute via `Connection.refresh`; a 401 leads back to the welcome screen), `RootView` (welcome or
   `MainView`), `WelcomeView` → `ScanView` (VisionKit QR) or `EnterCodeView`; `MainView` = tabs Decks (`DecksView` →
   `DeckView` → `Rule0View` sheet, `CardSheet` per card: the own copy's printing (foil sheen, several copies to pick),
-  else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`), `SettingsView` from the gear (connection and last update, "Your PCs" from `AppModel.loadStatus()` = `GET /api/app/status`,
-  `ServerStatus.PC.lastSeen(now:)` on the server's clock, "Open the Web App", About: version, source, Scryfall, Mana, Fan Content Policy).
+  else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`), `SettingsView` from the gear (a short list like the iPhone's Settings: Connection row › `ConnectionView` (server, this
+  device, last update, "Your PCs" from `AppModel.loadStatus()` = `GET /api/app/status`, `ServerStatus.PC.lastSeen(now:)` on the
+  server's clock), "Open the Web App", About Conclave › `AboutView` (version, source, Scryfall, Mana, Fan Content Policy), Sign Out).
   Screens for screenshots: `welcome`, `code`, `scan` (the simulator has no camera: "No Camera"), `signed-off`, and
   with the made-up account `App/Resources/demo.json` (written by `scripts/make_demo.py` from the web app's demo):
   `decks`, `deck`, `rule0`, `card` (the foil Birds of Paradise placed in the first deck; picture from Scryfall),
