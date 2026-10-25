@@ -23,8 +23,11 @@ private struct OutboxStatus: View {
                     Label(saved.text, systemImage: "checkmark.circle.fill")
                         .labelStyle(Tinted(color: Color.accentColor))
                     Spacer(minLength: 8)
-                    Button("Undo") { Task { await model.undo(saved.op) } }
-                        .font(.subheadline.weight(.semibold))
+                    Button { Task { await model.undo(saved.op) } } label: {
+                        Text("Undo").font(.body.weight(.semibold)).padding(.horizontal, 10).frame(minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
                 }
                 .task(id: saved.id) {
                     try? await Task.sleep(for: Self.toastFor)
@@ -65,14 +68,18 @@ private struct OutboxStatus: View {
     }
 
     private func pill<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        HStack(spacing: 8, content: content)
-            .font(.subheadline)
+        HStack(spacing: 12, content: content)
+            .font(.body)
             .lineLimit(1)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.leading, 20)
+            .padding(.trailing, 8)
+            .frame(minHeight: 60)
             .glassEffect(.regular, in: .capsule)
             .padding(.horizontal)
-            .padding(.bottom, 8)
+            .padding(.vertical, 8)
+            // the gaps around the pill catch taps too, so a near miss never opens the card beneath it
+            .contentShape(.rect)
+            .onTapGesture {}
             .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
