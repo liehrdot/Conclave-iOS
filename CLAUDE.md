@@ -31,6 +31,8 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   phone's operations, scanner rules), with Swift Testing tests next to it. `Pairing` parses pairing
   links and codes, `ETag` reads the read model's tag behind Caddy's suffix.
   `JSONValue` keeps any JSON as it came (the read model has keys the app doesn't model).
+  `Server` is the phone API (claim, read model with `If-None-Match`, status, sign off) over a `Transport`
+  (`URLSession.conclave()`: no URL cache, no cookies; tests use `FakeTransport`), errors as `ServerError`.
 - `Packages/ConclaveCore/Tests/ConclaveCoreTests/Resources/ops.json`: Conclave's shared operation cases
   (`docs/app-api.md` there), copied at the commit in `ops.rev` by `scripts/update_api_cases.sh <full hash>`.
   Re-run it when Conclave's `appops.py` changes; the core's operation code must pass every case.
