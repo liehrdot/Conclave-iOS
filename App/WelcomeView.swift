@@ -77,5 +77,5 @@ struct WelcomeView: View {
 
 #Preview {
     WelcomeView()
-        .environment(AppModel(store: MemoryDeviceStore(), transport: URLSession.conclave()))
+        .environment(AppModel(store: MemoryDeviceStore(), cache: nil, transport: URLSession.conclave()))
 }
