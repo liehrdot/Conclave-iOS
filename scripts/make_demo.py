@@ -92,6 +92,15 @@ def main(source: str) -> None:
     for g in demo["games"]:
         g["note"] = TEXTS.get(g.get("note") or "", g.get("note") or "")
     demo["options_en"] = OPTIONS_EN
+    # the PC's demo keeps its collection in no place; here the first deck's cards lie in that deck,
+    # so the card view shows its own copies (Birds of Paradise is a foil), and one stays in a binder
+    first = demo["decks"][0]
+    in_deck = {c["name"] for c in first["cards"]}
+    for e in demo.get("collection", []):
+        if e["name"] == "Cultivate":
+            e["place"] = "Binder"
+        elif e["name"] in in_deck:
+            e["place_deck"] = first["slug"]
     out = Path(__file__).parent.parent / "App/Resources/demo.json"
     out.write_text(json.dumps(demo, ensure_ascii=False, indent=1) + "\n")
     print(f"wrote {out}")

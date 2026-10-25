@@ -14,18 +14,21 @@ public struct ReadModel: Decodable, Equatable, Sendable {
     /// The quick-pick lists with German labels, and the same in English (nil from an older server).
     public var options: Options
     public var optionsEn: Options?
+    /// The collection, one entry per printing and place (`appdata.collection`), sorted by name.
+    public var collection: [CollectionEntry]
 
     /// The labels the app shows: English when the server sends them.
     public var shownOptions: Options { optionsEn ?? options }
 
     public init(decks: [Deck] = [], opponents: [Opponent] = [], games: [Game] = [], players: [String] = [],
-                options: Options = Options(), optionsEn: Options? = nil) {
+                options: Options = Options(), optionsEn: Options? = nil, collection: [CollectionEntry] = []) {
         self.decks = decks
         self.opponents = opponents
         self.games = games
         self.players = players
         self.options = options
         self.optionsEn = optionsEn
+        self.collection = collection
     }
 
     /// Decodes the server's JSON (snake_case keys). Call it off the main thread: a big account is
@@ -44,9 +47,10 @@ public struct ReadModel: Decodable, Equatable, Sendable {
         players = try c.decodeIfPresent([String].self, forKey: .players) ?? []
         options = try c.decodeIfPresent(Options.self, forKey: .options) ?? Options()
         optionsEn = try c.decodeIfPresent(Options.self, forKey: .optionsEn)
+        collection = try c.decodeIfPresent([CollectionEntry].self, forKey: .collection) ?? []
     }
 
-    enum CodingKeys: String, CodingKey { case decks, opponents, games, players, options, optionsEn }
+    enum CodingKeys: String, CodingKey { case decks, opponents, games, players, options, optionsEn, collection }
 
     /// The games played with a deck, newest first (the read model's order).
     public func games(of deck: Deck) -> [Game] { games.filter { $0.deck == deck.slug } }

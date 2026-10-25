@@ -10,7 +10,7 @@ set -euo pipefail
 
 app="$1"
 out="$2"
-SCREENS=(welcome code scan signed-off decks deck rule0 opponents opponent)
+SCREENS=(welcome code scan signed-off decks deck rule0 card opponents opponent)
 DEVICES=("iPhone" "iPad")
 bundle=app.conclave.mobile
 
@@ -43,6 +43,7 @@ for kind in "${DEVICES[@]}"; do
       xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
       SIMCTL_CHILD_CONCLAVE_SCREEN="$screen" xcrun simctl launch "$udid" "$bundle" >/dev/null
       sleep 4 # first launch, keyboard-free: long enough for the first frame and its animations
+      [ "$screen" = card ] && sleep 4 # the card picture comes from Scryfall
       xcrun simctl io "$udid" screenshot --type=png "$out/$slug-$appearance-$screen.png" >/dev/null
       echo "  $slug-$appearance-$screen.png"
     done

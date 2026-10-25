@@ -5,7 +5,7 @@ import SwiftUI
 struct DecksView: View {
     let device: Device
     @Environment(AppModel.self) private var model
-    @State private var path: [String] = AppModel.startScreen == "deck" || AppModel.startScreen == "rule0"
+    @State private var path: [String] = ["deck", "rule0", "card"].contains(AppModel.startScreen)
         ? [AppModel.demo?.decks.first?.slug].compactMap { $0 } : []
 
     var body: some View {
@@ -87,6 +87,8 @@ struct DeckView: View {
     let deck: Deck
     @Environment(AppModel.self) private var model
     @State private var showingRule0 = AppModel.startScreen == "rule0"
+    /// The card whose sheet is open; the screenshot opens the demo deck's foil.
+    @State private var shownCard: ShownCard? = AppModel.startScreen == "card" ? ShownCard(name: "Birds of Paradise") : nil
 
     var body: some View {
         List {
@@ -137,21 +139,38 @@ struct DeckView: View {
 
             ForEach(categories) { category in
                 Section("\(category.name) · \(category.count)") {
-                    ForEach(category.cards, id: \.self) { card in
-                        CardRow(card: card)
-                    }
+                    ForEach(category.cards, id: \.self) { row($0) }
                 }
             }
 
             if !deck.maybe.isEmpty {
                 Section("Maybe") {
-                    ForEach(deck.maybe, id: \.self) { CardRow(card: $0) }
+                    ForEach(deck.maybe, id: \.self) { row($0) }
                 }
             }
         }
         .navigationTitle(deck.name)
         .refreshable { await model.refresh() }
         .sheet(isPresented: $showingRule0) { Rule0View(deck: deck) }
+        .sheet(item: $shownCard) { shown in
+            CardSheet(name: shown.name, copies: model.library?.copies(of: shown.name, in: deck) ?? [])
+        }
+        // the deck's cards in one request, so the card view opens at once and works offline later
+        .task(id: deck.slug) { await model.cards.prefetch((deck.cards + deck.maybe).map(\.name)) }
+    }
+
+    private func row(_ card: Deck.Card) -> some View {
+        Button {
+            shownCard = ShownCard(name: card.name)
+        } label: {
+            CardRow(card: card, copies: model.library?.copies(of: card.name, in: deck) ?? [])
+        }
+        .foregroundStyle(.primary)
+    }
+
+    struct ShownCard: Identifiable {
+        var id: String { name }
+        let name: String
     }
 
     struct Category: Identifiable {
@@ -177,13 +196,22 @@ struct DeckView: View {
     }
 }
 
+/// A card in the deck list: its name, a tag when the copy in the deck is a foil or a proxy, the count.
 struct CardRow: View {
     let card: Deck.Card
+    /// The person's copies placed in this deck.
+    let copies: [CollectionEntry]
 
     var body: some View {
         HStack {
             Text(card.name)
             Spacer()
+            if copies.contains(where: \.foil) {
+                Tag(text: "Foil", tint: .purple).font(.caption)
+            }
+            if !copies.isEmpty, copies.allSatisfy(\.proxy) {
+                Tag(text: "Proxy", tint: .orange).font(.caption)
+            }
             if let qty = card.qty, qty > 1 {
                 Text("×\(qty)")
                     .monospacedDigit()
