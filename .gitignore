@@ -6,3 +6,5 @@ DerivedData/
 xcuserdata/
 build/
 App/Info.plist
+coverage.xml
+Packages/ConclaveCore/coverage.lcov

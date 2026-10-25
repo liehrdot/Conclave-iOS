@@ -1,0 +1,6 @@
+**Conclave for iPhone: areas to check closely**
+- Device tokens and other secrets (the sync server's device token, a Conclave Cards API key) belong in the Keychain only: never in UserDefaults, files, logs, crash output or synced documents, and never sent to any host but the server they belong to.
+- Network calls go to the paired server (an address the user gave by link, QR or typed) and to Scryfall over HTTPS only; no plain http except localhost for development, no disabled certificate checks.
+- Pairing links, QR codes and `conclave://` URLs are untrusted input: the server address and code must be parsed strictly (`Pairing.parse`), and a link must never point the app at a server the user did not confirm.
+- Data from the server and Scryfall (deck names, card text, notes) is untrusted: no web views or HTML built from it.
+- The CI workflows build and upload an unsigned app: they must not expose repository secrets to pull requests from forks.

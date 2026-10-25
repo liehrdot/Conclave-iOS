@@ -1,0 +1,63 @@
+# CodeQL code scanning: GitHub's fixed security queries over the Swift code and the workflows. Swift needs a
+# real build to analyse, so its job runs on a Mac with the same steps as CI; the workflows need none.
+# Findings show under Security › Code scanning. This is CodeQL's "advanced setup": the repository's
+# "default setup" must stay off, or the two clash.
+name: CodeQL
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  swift:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Pick the newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: swift
+          build-mode: manual
+          config-file: ./.github/codeql/codeql-config.yml
+          queries: security-extended
+      - name: Build
+        run: >
+          xcodebuild build
+          -project Conclave.xcodeproj -scheme Conclave -configuration Debug
+          -sdk iphoneos -destination "generic/platform=iOS" -derivedDataPath build
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:swift
+
+  actions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: actions
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:actions
