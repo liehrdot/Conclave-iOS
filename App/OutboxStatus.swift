@@ -71,9 +71,11 @@ private struct OutboxStatus: View {
         HStack(spacing: 12, content: content)
             .font(.body)
             .lineLimit(1)
+            // an even margin around the Undo button, so the pill is clearly bigger than it
             .padding(.leading, 20)
-            .padding(.trailing, 8)
-            .frame(minHeight: 60)
+            .padding(.trailing, 10)
+            .padding(.vertical, 10)
+            .frame(minHeight: 64)
             .glassEffect(.regular, in: .capsule)
             .padding(.horizontal)
             .padding(.vertical, 8)
