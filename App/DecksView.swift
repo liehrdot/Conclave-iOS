@@ -1,7 +1,8 @@
 import ConclaveCore
 import SwiftUI
 
-/// The Decks tab: pinned decks first, paused ones last, in the read model's order (the PC's).
+/// The Decks tab: pinned decks first, paused ones last, in the read model's order (the PC's). Each deck
+/// is a glass panel with its commander's art; the first deck's art lies blurred behind them all.
 struct DecksView: View {
     let device: Device
     @Environment(AppModel.self) private var model
@@ -12,12 +13,10 @@ struct DecksView: View {
         NavigationStack(path: $path) {
             Group {
                 if let decks = model.library?.decks, !decks.isEmpty {
-                    List {
-                        section("Pinned", decks.filter { $0.pinned && !$0.shelved })
-                        section("Decks", decks.filter { !$0.pinned && !$0.shelved })
-                        section("Paused", decks.filter(\.shelved))
-                    }
-                    .refreshable { await model.refresh() }
+                    DeckTiles(groups: groups(decks))
+                        .refreshable { await model.refresh() }
+                        // the commanders' art in one request
+                        .task(id: decks.count) { await model.cards.prefetch(decks.flatMap(\.commanders)) }
                 } else {
                     LibraryPlaceholder(empty: ("No Decks Yet", "rectangle.stack", "Decks you build on your PC show up here."))
                 }
@@ -39,49 +38,98 @@ struct DecksView: View {
         }
     }
 
-    @ViewBuilder
-    private func section(_ title: String, _ decks: [Deck]) -> some View {
-        if !decks.isEmpty {
-            Section(title) {
-                ForEach(decks) { deck in
-                    NavigationLink(value: deck.slug) { DeckRow(deck: deck) }
+    /// Pinned, the rest, paused; empty groups left out.
+    private func groups(_ decks: [Deck]) -> [DeckGroup] {
+        [
+            DeckGroup(title: "Pinned", decks: decks.filter { $0.pinned && !$0.shelved }),
+            DeckGroup(title: "Decks", decks: decks.filter { !$0.pinned && !$0.shelved }),
+            DeckGroup(title: "Paused", decks: decks.filter(\.shelved)),
+        ].filter { !$0.decks.isEmpty }
+    }
+}
+
+/// One heading of the Decks tab with its decks.
+struct DeckGroup: Identifiable {
+    var id: String { title }
+    let title: String
+    let decks: [Deck]
+}
+
+/// The decks as glass tiles; on the iPad they fill several columns.
+struct DeckTiles: View {
+    let groups: [DeckGroup]
+
+    var body: some View {
+        ScrollView {
+            GlassEffectContainer(spacing: 16) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 16)], alignment: .leading, spacing: 16) {
+                    ForEach(groups) { group in
+                        Section {
+                            ForEach(group.decks) { deck in
+                                NavigationLink(value: deck.slug) { DeckTile(deck: deck) }
+                                    .buttonStyle(.plain)
+                            }
+                        } header: {
+                            GlassHeader(group.title)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 12)
+                        }
+                    }
                 }
+                .padding(.horizontal)
+                .padding(.bottom, 24)
             }
+        }
+        .background {
+            if let first = groups.first?.decks.first?.commanders.first { ArtBackdrop(name: first) }
         }
     }
 }
 
-struct DeckRow: View {
+/// A deck on a glass panel: the commander's art in a circle, the name and facts beside it.
+struct DeckTile: View {
     let deck: Deck
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(deck.name)
-                .font(.headline)
-            Text(deck.commanders.joined(separator: " + "))
-                .font(.subheadline)
+        HStack(spacing: 14) {
+            CardArt(name: deck.commanders.first ?? "")
+                .frame(width: 64, height: 64)
+                .clipShape(.circle)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(deck.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                Text(deck.commanders.joined(separator: " + "))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    ColorPips(colors: deck.colors)
+                    if let level = deck.shownLevel { Text(level) }
+                    if deck.record.games > 0 {
+                        Text(recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
+                            .monospacedDigit()
+                            .accessibilityLabel("\(deck.record.wins) wins, \(deck.record.losses) losses")
+                    }
+                }
+                .font(.caption)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
-            HStack(spacing: 8) {
-                ColorPips(colors: deck.colors)
-                if let level = deck.shownLevel {
-                    Text(level)
-                }
-                if deck.record.games > 0 {
-                    Text(recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
-                        .monospacedDigit()
-                        .accessibilityLabel("\(deck.record.wins) wins, \(deck.record.losses) losses")
-                }
-                if deck.legal == false {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                        .accessibilityLabel("Not legal")
-                }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            if deck.legal == false {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .accessibilityLabel("Not legal")
+            }
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
-        .padding(.vertical, 2)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
+        .contentShape(.rect(cornerRadius: 24))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -103,22 +151,31 @@ struct DeckView: View {
                 }
             } else {
                 summary
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
 
             ForEach(categories) { category in
-                Section("\(category.name) · \(category.count)") {
-                    ForEach(category.cards, id: \.self) { row($0) }
+                Section {
+                    ForEach(category.cards, id: \.self) { row($0).glassRow() }
+                } header: {
+                    GlassHeader("\(category.name) · \(category.count)")
                 }
             }
 
             if !shownMaybe.isEmpty {
-                Section("Maybe") {
-                    ForEach(shownMaybe, id: \.self) { row($0) }
+                Section {
+                    ForEach(shownMaybe, id: \.self) { row($0).glassRow() }
+                } header: {
+                    GlassHeader("Maybe")
                 }
             }
         }
+        .glassList(over: deck.commanders.first ?? "")
         .searchable(text: $query, prompt: "Cards in this deck")
         .navigationTitle(deck.name)
+        .navigationBarTitleDisplayMode(.inline) // the header shows the name big
         .refreshable { await model.refresh() }
         .sheet(isPresented: $showingRule0) { Rule0View(deck: deck) }
         .sheet(item: $shownCard) { shown in
@@ -135,12 +192,16 @@ struct DeckView: View {
     private var shownCards: [Deck.Card] { deck.cards.filter(matches) }
     private var shownMaybe: [Deck.Card] { deck.maybe.filter(matches) }
 
-    /// The commander, Rule 0 and the record: hidden while searching, so the matches come first.
-    @ViewBuilder
+    /// The name, the commanders to tap, the facts as glass pills and Rule 0: hidden while searching,
+    /// so the matches come first.
     private var summary: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 6) {
-                // tap a commander for its card, like any card in the list
+        VStack(alignment: .leading, spacing: 14) {
+            Text(deck.name)
+                .font(.largeTitle.bold())
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+            // tap a commander for its card, like any card in the list
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(deck.commanders, id: \.self) { commander in
                     Button {
                         shownCard = ShownCard(name: commander)
@@ -151,52 +212,53 @@ struct DeckView: View {
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.tertiary)
                         }
+                        .font(.headline)
                     }
-                    .font(.headline)
-                    .foregroundStyle(.primary)
                     .buttonStyle(.plain)
                     .accessibilityHint("Shows the card")
                 }
+            }
+            HStack(spacing: 8) {
+                ColorPips(colors: deck.colors)
+                if let bracket = deck.bracket { Chip(text: "Bracket \(bracket)") }
+                if deck.proxy { Chip(text: "Proxy") }
+                if deck.legal == false { Chip(text: "Not legal") }
+            }
+            if let description = deck.description, !description.isEmpty {
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            GlassEffectContainer(spacing: 8) {
                 HStack(spacing: 8) {
-                    ColorPips(colors: deck.colors)
-                    if let level = deck.shownLevel { Text(level) }
-                    if deck.proxy { Text("Proxy") }
-                }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                if let description = deck.description, !description.isEmpty {
-                    Text(description)
-                        .font(.subheadline)
-                }
-                if deck.checking {
-                    Label("Your PC checks the newest changes next time it syncs.", systemImage: "clock")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    StatPill(label: "Games", value: "\(deck.record.games)")
+                    StatPill(label: "Won – lost", value: deck.record.games == 0 ? "–"
+                             : recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
+                    StatPill(label: "Speed", value: deck.speed?.shownLabel ?? "–")
                 }
             }
-            .padding(.vertical, 4)
+            if let last = ReadModel.date(deck.record.last) {
+                Text("Last played \(last, format: .relative(presentation: .named))")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             Button {
                 showingRule0 = true
             } label: {
                 Label("Rule 0", systemImage: "text.bubble")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
             }
-        }
-
-        Section("Record") {
-            if deck.record.games == 0 {
-                Text("No games yet.")
+            .buttonStyle(.glass)
+            if deck.checking {
+                Label("Your PC checks the newest changes next time it syncs.", systemImage: "clock")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
-            } else {
-                LabeledContent("Games", value: "\(deck.record.games)")
-                LabeledContent("Won – lost", value: recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
-                if let last = ReadModel.date(deck.record.last) {
-                    LabeledContent("Last played") { Text(last, format: .relative(presentation: .named)) }
-                }
-            }
-            if let speed = deck.speed, let label = speed.shownLabel {
-                LabeledContent("Speed", value: label)
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 
     private func row(_ card: Deck.Card) -> some View {
@@ -244,6 +306,9 @@ struct CardRow: View {
 
     var body: some View {
         HStack {
+            CardArt(name: card.name)
+                .frame(width: 44, height: 32)
+                .clipShape(.rect(cornerRadius: 6))
             Text(card.name)
             Spacer()
             if copies.contains(where: \.foil) {
