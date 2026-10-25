@@ -55,84 +55,43 @@ struct DeckGroup: Identifiable {
     let decks: [Deck]
 }
 
-/// The decks as glass tiles; on the iPad they fill several columns.
+/// The decks as glass tiles in their groups, over the first deck's art.
 struct DeckTiles: View {
     let groups: [DeckGroup]
 
     var body: some View {
-        ScrollView {
-            GlassEffectContainer(spacing: 16) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 16)], alignment: .leading, spacing: 16) {
-                    ForEach(groups) { group in
-                        Section {
-                            ForEach(group.decks) { deck in
-                                NavigationLink(value: deck.slug) { DeckTile(deck: deck) }
-                                    .buttonStyle(.plain)
-                            }
-                        } header: {
-                            GlassHeader(group.title)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, 12)
-                        }
+        TileGrid(backdrop: groups.first?.decks.first?.commanders.first) {
+            ForEach(groups) { group in
+                Section {
+                    ForEach(group.decks) { deck in
+                        NavigationLink(value: deck.slug) { DeckTile(deck: deck) }
+                            .buttonStyle(.plain)
                     }
+                } header: {
+                    GlassHeader(group.title)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 12)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 24)
-                // the container sizes to its content otherwise, so the iPad got two narrow columns
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
-        }
-        .background {
-            if let first = groups.first?.decks.first?.commanders.first { ArtBackdrop(name: first) }
         }
     }
 }
 
-/// A deck on a glass panel: the commander's art in a circle, the name and facts beside it.
+/// A deck's tile: its commander's art, name, commanders, and colours, level and record.
 struct DeckTile: View {
     let deck: Deck
 
     var body: some View {
-        HStack(spacing: 14) {
-            CardArt(name: deck.commanders.first ?? "")
-                .frame(width: 64, height: 64)
-                .clipShape(.circle)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(deck.name)
-                    .font(.headline)
-                    .lineLimit(1)
-                Text(deck.commanders.joined(separator: " + "))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                HStack(spacing: 8) {
-                    ColorPips(colors: deck.colors)
-                    if let level = deck.shownLevel { Text(level) }
-                    if deck.record.games > 0 {
-                        Text(recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
-                            .monospacedDigit()
-                            .accessibilityLabel("\(deck.record.wins) wins, \(deck.record.losses) losses")
-                    }
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+        GlassTile(art: deck.commanders.first ?? "", title: deck.name,
+                  subtitle: deck.commanders.joined(separator: " + "), warning: deck.legal == false ? "Not legal" : nil) {
+            ColorPips(colors: deck.colors)
+            if let level = deck.shownLevel { Text(level) }
+            if deck.record.games > 0 {
+                Text(recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
+                    .monospacedDigit()
+                    .accessibilityLabel("\(deck.record.wins) wins, \(deck.record.losses) losses")
             }
-            Spacer(minLength: 0)
-            if deck.legal == false {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .accessibilityLabel("Not legal")
-            }
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
-        .contentShape(.rect(cornerRadius: 24))
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -346,8 +305,12 @@ struct Rule0View: View {
                 .padding(.vertical, 2)
                 .accessibilityElement(children: .combine)
                 .accessibilityHint(row.flag ? "Worth mentioning at the table" : "")
-                .listRowBackground(row.flag ? Color.orange.opacity(0.12) : nil)
+                .listRowBackground(ZStack {
+                    Rectangle().fill(.ultraThinMaterial)
+                    if row.flag { Color.orange.opacity(0.15) }
+                })
             }
+            .glassList(over: deck.commanders.first ?? "")
             .navigationTitle("Rule 0")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
