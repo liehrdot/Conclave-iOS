@@ -158,6 +158,13 @@ final class AppModel {
         await showOps()
     }
 
+    /// The sync server, for the calls that don't go through the outbox (the search by description);
+    /// nil in the demo, where nothing is sent anywhere.
+    var server: Server? {
+        guard let device, !inDemo else { return nil }
+        return Server(device: device, transport: transport)
+    }
+
     /// Changes not sent yet: shown as a quiet line, never in the demo (nothing is sent there).
     var waiting: [PendingOp] { inDemo ? [] : ops.filter { $0.status == .pending } }
     /// Changes the server refused for good, with its reason.
@@ -228,7 +235,7 @@ extension AppModel {
     /// The screen the CI screenshots open (`CONCLAVE_SCREEN`, scripts/screenshots.sh); nil in normal use.
     static let startScreen = ProcessInfo.processInfo.environment["CONCLAVE_SCREEN"]
     /// Screens that show the made-up account in `demo.json`.
-    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "log-game", "saved", "opponents", "opponent", "edit-opponent", "cards", "settings"]
+    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "log-game", "saved", "opponents", "opponent", "edit-opponent", "cards", "describe", "settings"]
 
     /// The real app keeps the device in the Keychain and the decks in Application Support (not Caches:
     /// iOS may empty those); a screenshot starts from a made-up state instead.
