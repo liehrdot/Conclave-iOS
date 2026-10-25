@@ -116,15 +116,39 @@ struct OpponentView: View {
         .sheet(item: $shownCard) { shown in CardSheet(name: shown.name, copies: []) }
     }
 
+    /// True when the opponent has no name of its own, only its single commander's.
+    private var namedAfterCommander: Bool {
+        opponent.commanders.count == 1 && opponent.title == opponent.commanders[0]
+    }
+
     /// The name, the commanders to tap, who plays it, what it does and your record as glass pills.
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(opponent.title)
-                .font(.largeTitle.bold())
-                .lineLimit(2)
-                .minimumScaleFactor(0.7)
+            if namedAfterCommander, let commander = opponent.commanders.first {
+                Button {
+                    shownCard = DeckView.ShownCard(name: commander)
+                } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(opponent.title)
+                        Image(systemName: "chevron.right")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .font(.largeTitle.bold())
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Shows the card")
+            } else {
+                Text(opponent.title)
+                    .font(.largeTitle.bold())
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+            }
+            // the commanders to tap; left out when the name is just the commander (most opponents), and the title is the button
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(opponent.commanders, id: \.self) { commander in
+                ForEach(namedAfterCommander ? [] : opponent.commanders, id: \.self) { commander in
                     Button {
                         shownCard = DeckView.ShownCard(name: commander)
                     } label: {
