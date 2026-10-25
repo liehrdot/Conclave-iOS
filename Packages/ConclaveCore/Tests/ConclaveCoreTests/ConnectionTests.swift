@@ -42,32 +42,54 @@ import Testing
         #expect(fake.requests.first?.httpMethod == "DELETE")
     }
 
-    @Test func signedOffOnThePCForgetsTheDevice() async {
-        let device = Device(server: URL(string: "https://sync.example.org")!, token: "t", id: "d", name: "n", serverID: "s")
-        let store = MemoryDeviceStore(device)
-        let fake = FakeTransport(.init(status: 401))
-        #expect(await Connection.stillPaired(device, store: store, transport: fake) == false)
-        #expect(store.load() == nil)
-        #expect(fake.requests.first?.url?.path == "/api/app/status")
+    static let device = Device(server: URL(string: "https://sync.example.org")!, token: "t", id: "d", name: "n", serverID: "s")
+    let cache = ReadModelCache(folder: FileManager.default.temporaryDirectory.appending(path: "connection-\(UUID().uuidString)"))
+    let model = try! #require(ReadModelTests.models.first)
+
+    @Test func refreshSavesANewerReadModel() async throws {
+        let store = MemoryDeviceStore(Self.device)
+        let fake = FakeTransport(.init(body: String(decoding: model, as: UTF8.self), headers: ["ETag": "\"x-1-2\""]))
+        guard case .changed(let got) = await Connection.refresh(Self.device, store: store, cache: cache, transport: fake) else {
+            Issue.record("expected a new read model")
+            return
+        }
+        #expect(cache.load()?.model == got)
+        #expect(await Connection.refresh(Self.device, store: store, cache: cache, transport: FakeTransport(.init(status: 304))) == .unchanged)
+        cache.clear()
     }
 
-    @Test func offlineOrAServerErrorKeepsTheDevice() async {
-        let device = Device(server: URL(string: "https://sync.example.org")!, token: "t", id: "d", name: "n", serverID: "s")
-        let store = MemoryDeviceStore(device)
+    @Test func signedOffOnThePCForgetsTheDeviceAndItsDecks() async throws {
+        let store = MemoryDeviceStore(Self.device)
+        try cache.save(model, etag: "e")
+        let fake = FakeTransport(.init(status: 401))
+        #expect(await Connection.refresh(Self.device, store: store, cache: cache, transport: fake) == .signedOff)
+        #expect(store.load() == nil)
+        #expect(cache.load() == nil)
+        #expect(fake.requests.first?.url?.path == "/api/app/data")
+    }
+
+    @Test func offlineOrAServerErrorKeepsTheDeviceAndItsDecks() async throws {
+        let store = MemoryDeviceStore(Self.device)
+        try cache.save(model, etag: "e")
         let offline = FakeTransport()
         offline.failure = URLError(.notConnectedToInternet)
-        #expect(await Connection.stillPaired(device, store: store, transport: offline))
-        #expect(await Connection.stillPaired(device, store: store, transport: FakeTransport(.init(status: 502))))
-        #expect(await Connection.stillPaired(device, store: store, transport: FakeTransport(.init(body: #"{"etag": "x", "pcs": []}"#))))
-        #expect(store.load() == device)
+        #expect(await Connection.refresh(Self.device, store: store, cache: cache, transport: offline) == .failed(ServerError.offline.message))
+        let broken = await Connection.refresh(Self.device, store: store, cache: cache, transport: FakeTransport(.init(body: "not json")))
+        #expect(broken == .failed("Couldn't update. Please try again."))
+        #expect(await Connection.refresh(Self.device, store: store, cache: cache, transport: FakeTransport(.init(status: 502))) != .signedOff)
+        #expect(store.load() == Self.device)
+        #expect(cache.load()?.etag == "e")
+        cache.clear()
     }
 
     @Test func aSignOffOfAnOldDeviceKeepsTheNewOne() async throws {
-        let old = Device(server: URL(string: "https://sync.example.org")!, token: "t", id: "old", name: "n", serverID: "s")
         let new = Device(server: URL(string: "https://sync.example.org")!, token: "t2", id: "new", name: "n", serverID: "s")
         let store = MemoryDeviceStore(new)
-        #expect(await Connection.stillPaired(old, store: store, transport: FakeTransport(.init(status: 401))) == false)
+        try cache.save(model, etag: "e")
+        #expect(await Connection.refresh(Self.device, store: store, cache: cache, transport: FakeTransport(.init(status: 401))) == .signedOff)
         #expect(store.load() == new)
+        #expect(cache.load() != nil)
+        cache.clear()
     }
 
     @Test func everyProblemHasAMessage() {

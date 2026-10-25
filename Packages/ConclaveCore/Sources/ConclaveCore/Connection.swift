@@ -49,19 +49,36 @@ public enum Connection {
         store.clear()
     }
 
-    /// Asks the server whether this phone is still paired, and forgets it here when the PC signed it
-    /// off (401), like `data.js` does on a 401 anywhere. Offline or any other error: still paired, so a
-    /// phone without signal at the table keeps its decks. Returns false only when it was signed off.
-    public static func stillPaired(_ device: Device, store: any DeviceStore, transport: any Transport) async -> Bool {
+    /// What `refresh` found out.
+    public enum Refresh: Equatable, Sendable {
+        /// A newer read model, already saved.
+        case changed(ReadModel)
+        /// The saved one is current.
+        case unchanged
+        /// No answer or an error: the saved copy stays, the reason is the sentence to show.
+        case failed(String)
+        /// The PC signed this phone off: the device and the saved copy are forgotten.
+        case signedOff
+    }
+
+    /// Fetches a newer read model into `cache`. A 401 means the PC signed this phone off (removed it
+    /// from its device list): it forgets the device and the saved decks, like `data.js` does on a 401.
+    /// Offline or any other error keeps both, so a phone without signal at the table keeps its decks.
+    public static func refresh(
+        _ device: Device, store: any DeviceStore, cache: ReadModelCache, transport: any Transport
+    ) async -> Refresh {
         do {
-            _ = try await Server(device: device, transport: transport).status()
-            return true
+            guard let model = try await cache.refresh(from: Server(device: device, transport: transport)) else { return .unchanged }
+            return .changed(model)
         } catch ServerError.signedOff {
-            // only the device that was asked: it may have been paired again meanwhile
-            if store.load()?.id == device.id { store.clear() }
-            return false
+            // only the device that was asked: the phone may have been paired again meanwhile
+            if store.load()?.id == device.id {
+                store.clear()
+                cache.clear()
+            }
+            return .signedOff
         } catch {
-            return true
+            return .failed(message(for: error, doing: "Couldn't update"))
         }
     }
 }
@@ -69,10 +86,15 @@ public enum Connection {
 extension Connection {
     /// The sentence the app shows for anything `pair` throws.
     public static func message(for error: any Error) -> String {
+        message(for: error, doing: "Pairing didn't work")
+    }
+
+    /// The sentence for an error; `doing` starts the one for an error without a sentence of its own.
+    static func message(for error: any Error, doing: String) -> String {
         switch error {
         case let problem as Problem: problem.message
         case let error as ServerError: error.message
-        default: "Pairing didn't work. Please try again."
+        default: "\(doing). Please try again."
         }
     }
 }
