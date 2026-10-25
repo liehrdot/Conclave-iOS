@@ -1995,7 +1995,8 @@
    "set_name": "Reality Fracture Commander",
    "collector_number": "20",
    "scryfall_id": "c6b6117c-faab-4bbb-b851-07bd8061ef03",
-   "price_eur": "0.30"
+   "price_eur": "0.30",
+   "place_deck": "meren-aristocrats"
   },
   {
    "id": "demo02",
@@ -2008,7 +2009,8 @@
    "set_name": "Marvel Super Heroes Commander",
    "collector_number": "170",
    "scryfall_id": "492c2f9a-51e7-4e0f-9899-23bf43ea988b",
-   "price_eur": "8.22"
+   "price_eur": "8.22",
+   "place_deck": "meren-aristocrats"
   },
   {
    "id": "demo08",
@@ -2021,7 +2023,8 @@
    "set_name": "Reality Fracture Commander",
    "collector_number": "22",
    "scryfall_id": "1ac6cb62-45da-4e9a-84c6-09e6eacf0664",
-   "price_eur": "0.20"
+   "price_eur": "0.20",
+   "place_deck": "meren-aristocrats"
   },
   {
    "id": "demo07",
@@ -2034,7 +2037,8 @@
    "set_name": "Marvel Super Heroes Commander",
    "collector_number": "172",
    "scryfall_id": "3a1f7bb6-23a8-40aa-8f23-4f83a31a4520",
-   "price_eur": null
+   "price_eur": null,
+   "place": "Binder"
   },
   {
    "id": "demo06",
@@ -2047,7 +2051,8 @@
    "set_name": "Commander Legends: Battle for Baldur's Gate",
    "collector_number": "754",
    "scryfall_id": "f5c19b87-e114-46d4-9f6c-c02e838a08dd",
-   "price_eur": "2.51"
+   "price_eur": "2.51",
+   "place_deck": "meren-aristocrats"
   },
   {
    "id": "demo04",
@@ -2086,7 +2091,8 @@
    "set_name": "Tarkir: Dragonstorm Commander",
    "collector_number": "266",
    "scryfall_id": "1b133bbe-4091-4029-a391-b9c3c733ee3a",
-   "price_eur": null
+   "price_eur": null,
+   "place_deck": "meren-aristocrats"
   },
   {
    "id": "demo03",
@@ -2099,7 +2105,8 @@
    "set_name": "Marvel Super Heroes Commander",
    "collector_number": "210",
    "scryfall_id": "1d8b007b-3169-4ee3-80c7-781fc096fc7a",
-   "price_eur": "5.92"
+   "price_eur": "5.92",
+   "place_deck": "meren-aristocrats"
   },
   {
    "id": "demo00",
@@ -2112,7 +2119,8 @@
    "set_name": "Reality Fracture Commander",
    "collector_number": "21",
    "scryfall_id": "8ee443cc-e17a-493b-9c93-1f9e141a30e4",
-   "price_eur": "1.08"
+   "price_eur": "1.08",
+   "place_deck": "meren-aristocrats"
   }
  ],
  "players": [

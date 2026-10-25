@@ -38,14 +38,25 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   `Connection.refresh` fetches into a `ReadModelCache` and forgets the device and its decks when the PC signed it off (401).
   `ReadModel` = the typed read model (decks, opponents, games, `Options`); `shown…` prefer the server's
   English `*_en` fields and fall back to German. `ReadModelCache` keeps the raw JSON + ETag on disk and
-  `refresh(from:)` sends `If-None-Match`.
+  `refresh(from:)` sends `If-None-Match`. `CollectionEntry` = the read model's `collection`; `ReadModel.copies(of:in:)`
+  = the copies placed in a deck (real and foil first, capped at the deck's count, like the PC's `_deck_value()`),
+  `imageURL()` = that printing's picture from its Scryfall id.
+  Cards: the read model has only names, so `Scryfall` (an actor: `/cards/collection` in batches of 75 asked by the
+  front face, requests ≥ 100 ms apart, `Accept` + `User-Agent`) looks them up into `Card` (faces, Oracle text,
+  default printing's pictures); `CardLibrary` keeps them on disk by name (`prefetch` when a deck opens, `clear()` on
+  sign-out). `Mana.pieces` splits `{2}{B}`/`{T}` text into symbols (`Kind`, `spoken` for VoiceOver).
 - App: `AppModel` (paired device, `library` = the read model from `ReadModelCache`, `refresh()` on opening, on
   return and every minute via `Connection.refresh`; a 401 leads back to the welcome screen), `RootView` (welcome or
   `MainView`), `WelcomeView` → `ScanView` (VisionKit QR) or `EnterCodeView`; `MainView` = tabs Decks (`DecksView` →
-  `DeckView` → `Rule0View` sheet) and Opponents (`OpponentsView` → `OpponentView`), `SettingsView` from the gear.
+  `DeckView` → `Rule0View` sheet, `CardSheet` per card: the own copy's printing (foil sheen, several copies to pick),
+  else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`), `SettingsView` from the gear.
   Screens for screenshots: `welcome`, `code`, `scan` (the simulator has no camera: "No Camera"), `signed-off`, and
   with the made-up account `App/Resources/demo.json` (written by `scripts/make_demo.py` from the web app's demo):
-  `decks`, `deck`, `rule0`, `opponents`, `opponent` (`AppModel.launch()`, no Keychain).
+  `decks`, `deck`, `rule0`, `card` (the foil Birds of Paradise placed in the first deck; picture from Scryfall),
+  `opponents`, `opponent` (`AppModel.launch()`, no Keychain).
+  Mana symbols: `ManaText` draws `ManaGlyphs` (circles + the Mana font's glyphs, SVGs in `Assets.xcassets/Mana`,
+  OFL licence in `App/Resources/Mana-LICENSE.txt`) inline in a `Text`. `CardImages` caches card pictures on disk
+  (`returnCacheDataElseLoad`, 300 MB in Caches).
   Colours: `AccentColor` = dark green in light mode, neon in dark (text, icons); `Neon` = fills, always with black text.
 - `Packages/ConclaveCore/Tests/ConclaveCoreTests/Resources/ops.json`: Conclave's shared operation cases
   (`docs/app-api.md` there), copied at the commit in `ops.rev` by `scripts/update_api_cases.sh <full hash>`.

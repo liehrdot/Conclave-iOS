@@ -14,11 +14,14 @@ final class AppModel {
     private(set) var problem: String?
     /// Why the phone is no longer paired, when the PC signed it off; shown on the welcome screen.
     private(set) var notice: String?
+    /// Card texts and Scryfall's printings, looked up by name (the read model has only names).
+    let cards: CardLibrary
     private let store: any DeviceStore
     private let cache: ReadModelCache?
     private let transport: any Transport
 
-    init(store: any DeviceStore, cache: ReadModelCache?, transport: any Transport) {
+    init(store: any DeviceStore, cache: ReadModelCache?, transport: any Transport, cardFile: URL? = nil) {
+        cards = CardLibrary(scryfall: Scryfall(transport: transport), file: cardFile)
         self.store = store
         self.cache = cache
         self.transport = transport
@@ -50,6 +53,7 @@ final class AppModel {
             self.device = nil
             library = nil
             notice = ServerError.signedOff.message
+            await cards.clear()
         }
     }
 
@@ -60,6 +64,7 @@ final class AppModel {
         self.device = nil
         library = nil
         problem = nil
+        await cards.clear()
     }
 }
 
@@ -67,7 +72,7 @@ extension AppModel {
     /// The screen the CI screenshots open (`CONCLAVE_SCREEN`, scripts/screenshots.sh); nil in normal use.
     static let startScreen = ProcessInfo.processInfo.environment["CONCLAVE_SCREEN"]
     /// Screens that show the made-up account in `demo.json`.
-    static let demoScreens: Set = ["decks", "deck", "rule0", "opponents", "opponent"]
+    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "opponents", "opponent"]
 
     /// The real app keeps the device in the Keychain and the decks in Application Support (not Caches:
     /// iOS may empty those); a screenshot starts from a made-up state instead.
@@ -75,7 +80,8 @@ extension AppModel {
         let transport = URLSession.conclave()
         guard let screen = startScreen else {
             let folder = URL.applicationSupportDirectory.appending(path: "ReadModel")
-            return AppModel(store: KeychainDeviceStore(), cache: ReadModelCache(folder: folder), transport: transport)
+            return AppModel(store: KeychainDeviceStore(), cache: ReadModelCache(folder: folder), transport: transport,
+                            cardFile: URL.applicationSupportDirectory.appending(path: "Cards/cards.json"))
         }
         if demoScreens.contains(screen) {
             let model = AppModel(store: MemoryDeviceStore(.sample), cache: nil, transport: transport)
