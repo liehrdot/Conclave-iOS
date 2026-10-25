@@ -86,6 +86,78 @@ struct StatPill: View {
     }
 }
 
+/// Tiles in a grid over a card's blurred art: one column on the iPhone, several on the iPad.
+struct TileGrid<Content: View>: View {
+    /// The card whose art lies behind the tiles.
+    let backdrop: String?
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        ScrollView {
+            GlassEffectContainer(spacing: 16) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 16)], alignment: .leading, spacing: 16) {
+                    content
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .padding(.bottom, 16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .background {
+            if let backdrop { ArtBackdrop(name: backdrop) }
+        }
+    }
+}
+
+/// A glass panel for one deck or opponent: the commander's art in a circle, a title, a subtitle
+/// and a line of facts, a warning sign when needed, and a chevron.
+struct GlassTile<Facts: View>: View {
+    let art: String
+    let title: String
+    var subtitle: String?
+    /// Shown as an orange sign, spoken by VoiceOver ("Not legal").
+    var warning: String?
+    @ViewBuilder let facts: Facts
+
+    var body: some View {
+        HStack(spacing: 14) {
+            CardArt(name: art)
+                .frame(width: 64, height: 64)
+                .clipShape(.circle)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .lineLimit(1)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                HStack(spacing: 8) { facts }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            if let warning {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .accessibilityLabel(warning)
+            }
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
+        .contentShape(.rect(cornerRadius: 24))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// A section heading over the art: bigger and bolder than a list's, so it holds its own on glass.
 struct GlassHeader: View {
     let text: String

@@ -67,6 +67,9 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   behind them via `ArtBackdrop`); a deck's screen is a `glassList(over:)` with a big header (name, commanders,
   chips, `StatPill`s, glass Rule 0 button), `GlassHeader` sections and `glassRow()` rows with a `CardArt` thumbnail.
   `CardArt` = a card's art crop from `CardLibrary` + `CardImages`; the Decks tab prefetches all commanders at once.
+  Shared: `TileGrid` (tiles over a backdrop, columns on the iPad) + `GlassTile` (art circle, title, facts) for the Decks
+  and Opponents tabs; the opponent screen, Rule 0 and the card sheet sit over their commander's or card's art too.
+  Settings stays a plain iOS form on purpose (it's a utility sheet, like the iPhone's own Settings).
   Colours: `AccentColor` = dark green in light mode, neon in dark (text, icons); `Neon` = fills, always with black text.
 - `Packages/ConclaveCore/Tests/ConclaveCoreTests/Resources/ops.json`: Conclave's shared operation cases
   (`docs/app-api.md` there), copied at the commit in `ops.rev` by `scripts/update_api_cases.sh <full hash>`.

@@ -2,6 +2,7 @@ import ConclaveCore
 import SwiftUI
 
 /// The Opponents tab: the decks played against, most recent first, with the record against each.
+/// Glass tiles over the first opponent's art, like the Decks tab.
 struct OpponentsView: View {
     let device: Device
     @Environment(AppModel.self) private var model
@@ -12,10 +13,15 @@ struct OpponentsView: View {
         NavigationStack(path: $path) {
             Group {
                 if let opponents = model.library?.opponents, !opponents.isEmpty {
-                    List(opponents) { opponent in
-                        NavigationLink(value: opponent.id) { OpponentRow(opponent: opponent) }
+                    TileGrid(backdrop: opponents.first?.commanders.first) {
+                        ForEach(opponents) { opponent in
+                            NavigationLink(value: opponent.id) { OpponentTile(opponent: opponent) }
+                                .buttonStyle(.plain)
+                        }
                     }
                     .refreshable { await model.refresh() }
+                    // the commanders' art in one request
+                    .task(id: opponents.count) { await model.cards.prefetch(opponents.flatMap(\.commanders)) }
                 } else {
                     LibraryPlaceholder(empty: ("No Opponents Yet", "person.2", "Decks you played against show up here after a game."))
                 }
@@ -38,27 +44,24 @@ struct OpponentsView: View {
     }
 }
 
-struct OpponentRow: View {
+/// An opponent's tile: the commander's art, the deck's name, who plays it and your record against it.
+struct OpponentTile: View {
     let opponent: Opponent
 
+    private var commanders: String { opponent.commanders.joined(separator: " + ") }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(opponent.title)
-                .font(.headline)
-            HStack(spacing: 8) {
-                ColorPips(colors: opponent.colors ?? "")
-                if let player = opponent.player, !player.isEmpty { Text(player) }
-                if opponent.record.games > 0 {
-                    // the person's own result against this deck
-                    Text(recordText(wins: opponent.record.wins, losses: opponent.record.losses, draws: opponent.record.draws))
-                        .monospacedDigit()
-                        .accessibilityLabel("You won \(opponent.record.wins), lost \(opponent.record.losses)")
-                }
+        GlassTile(art: opponent.commanders.first ?? "", title: opponent.title,
+                  subtitle: opponent.title == commanders ? nil : commanders) {
+            ColorPips(colors: opponent.colors ?? "")
+            if let player = opponent.player, !player.isEmpty { Text(player) }
+            if opponent.record.games > 0 {
+                // the person's own result against this deck
+                Text(recordText(wins: opponent.record.wins, losses: opponent.record.losses, draws: opponent.record.draws))
+                    .monospacedDigit()
+                    .accessibilityLabel("You won \(opponent.record.wins), lost \(opponent.record.losses)")
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 2)
     }
 }
 
@@ -67,44 +70,29 @@ struct OpponentView: View {
     let opponent: Opponent
     @Environment(AppModel.self) private var model
 
+    /// The commander whose card sheet is open.
+    @State private var shownCard: DeckView.ShownCard?
+
     var body: some View {
         List {
-            Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    if opponent.title != opponent.commanders.joined(separator: " + ") {
-                        Text(opponent.commanders.joined(separator: " + "))
-                            .font(.headline)
-                    }
-                    HStack(spacing: 8) {
-                        ColorPips(colors: opponent.colors ?? "")
-                        if let player = opponent.player, !player.isEmpty { Text("Played by \(player)") }
-                        if let bracket = opponent.bracket { Text("Bracket \(bracket)") }
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
-                if !opponent.tags.isEmpty {
-                    let tags = model.library?.shownOptions.tags ?? []
-                    Text(opponent.tags.map { Options.label($0, in: tags) }.formatted(.list(type: .and)))
-                }
-            }
+            header
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
 
-            Section("Your Record") {
-                if opponent.record.games == 0 {
-                    Text("No games yet.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    LabeledContent("Games", value: "\(opponent.record.games)")
-                    LabeledContent("Won – lost", value: recordText(wins: opponent.record.wins, losses: opponent.record.losses, draws: opponent.record.draws))
+            if !opponent.record.perDeck.isEmpty {
+                Section {
                     ForEach(opponent.record.perDeck, id: \.name) { deck in
                         LabeledContent(deck.name, value: recordText(wins: deck.wins, losses: deck.losses, draws: 0))
+                            .glassRow()
                     }
+                } header: {
+                    GlassHeader("Your Decks Against It")
                 }
             }
 
             if !opponent.notes.isEmpty {
-                Section("Notes") {
+                Section {
                     ForEach(opponent.notes) { note in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(note.text)
@@ -114,11 +102,73 @@ struct OpponentView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
+                        .glassRow()
                     }
+                } header: {
+                    GlassHeader("Notes")
                 }
             }
         }
+        .glassList(over: opponent.commanders.first ?? "")
         .navigationTitle(opponent.title)
+        .navigationBarTitleDisplayMode(.inline) // the header shows the name big
         .refreshable { await model.refresh() }
+        .sheet(item: $shownCard) { shown in CardSheet(name: shown.name, copies: []) }
+    }
+
+    /// The name, the commanders to tap, who plays it, what it does and your record as glass pills.
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(opponent.title)
+                .font(.largeTitle.bold())
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(opponent.commanders, id: \.self) { commander in
+                    Button {
+                        shownCard = DeckView.ShownCard(name: commander)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(commander)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .font(.headline)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Shows the card")
+                }
+            }
+            HStack(spacing: 8) {
+                ColorPips(colors: opponent.colors ?? "")
+                if let bracket = opponent.bracket { Chip(text: "Bracket \(bracket)") }
+                if let player = opponent.player, !player.isEmpty {
+                    Text("Played by \(player)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if !opponent.tags.isEmpty {
+                let tags = model.library?.shownOptions.tags ?? []
+                Text(opponent.tags.map { Options.label($0, in: tags) }.formatted(.list(type: .and)))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            GlassEffectContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    StatPill(label: "Games", value: "\(opponent.record.games)")
+                    StatPill(label: "Won – lost", value: opponent.record.games == 0 ? "–"
+                             : recordText(wins: opponent.record.wins, losses: opponent.record.losses, draws: opponent.record.draws))
+                }
+            }
+            if let last = ReadModel.date(opponent.record.last) {
+                Text("Last played \(last, format: .relative(presentation: .named))")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 }

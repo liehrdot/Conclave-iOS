@@ -33,9 +33,15 @@ struct CardSheet: View {
                         .frame(maxWidth: .infinity)
                     }
                     copiesSection
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                        .glassEffect(.regular, in: .rect(cornerRadius: 20))
                     if let card {
                         ForEach(Array(card.faces.enumerated()), id: \.offset) { _, face in
                             FaceText(face: face)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(16)
+                                .glassEffect(.regular, in: .rect(cornerRadius: 20))
                         }
                         if let link = card.link {
                             Link(destination: link) {
@@ -53,6 +59,8 @@ struct CardSheet: View {
                 }
                 .padding()
             }
+            // the card's own art, blurred, like the deck screens
+            .background { ArtBackdrop(name: name) }
             .navigationTitle(card?.name ?? name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
