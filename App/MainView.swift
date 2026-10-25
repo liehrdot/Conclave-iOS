@@ -4,7 +4,7 @@ import SwiftUI
 /// A paired phone: the tabs. Decks and Opponents for now; the table and the cards follow.
 struct MainView: View {
     let device: Device
-    @State private var page: Page = AppModel.startScreen?.hasPrefix("opponent") == true ? .opponents : .decks
+    @State private var page: Page = ["opponents", "opponent", "edit-opponent"].contains(AppModel.startScreen) ? .opponents : .decks
 
     enum Page: Hashable { case decks, opponents }
 

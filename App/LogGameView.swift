@@ -217,7 +217,7 @@ private struct PlaceRow: View {
 }
 
 /// Quick picks as chips that wrap onto the next line.
-private struct ChoiceChips: View {
+struct ChoiceChips: View {
     let title: String
     let choices: [Options.Choice]
     let picked: [String]
@@ -245,7 +245,7 @@ private struct ChoiceChips: View {
 }
 
 /// Lays its children out in rows, starting a new row when one is full.
-private struct Wrap: Layout {
+struct Wrap: Layout {
     var spacing: CGFloat
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -359,9 +359,9 @@ private struct OpponentPicker: View {
     }
 }
 
-/// A picked choice on this sheet: a soft wash of the accent with accent text, calmer on the eyes than a
+/// A picked choice (here and on the opponent screen): a soft wash of the accent with accent text, calmer on the eyes than a
 /// neon fill (Flo's ask). The neon stays for the one main button per screen.
-private enum Picked {
+enum Picked {
     static let fill = Color.accentColor.opacity(0.22)
 }
 
