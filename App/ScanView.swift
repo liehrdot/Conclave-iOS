@@ -4,7 +4,9 @@ import SwiftUI
 import VisionKit
 
 /// Pairing by scanning the QR code the PC shows. Apple's own scanner (VisionKit) finds the code;
-/// the link in it carries the server's address and the code.
+/// the link in it carries the server's address and the code. Any QR code can name any server, so the
+/// app shows the server and pairs only when the person says yes: a code on a stranger's poster would
+/// otherwise send this phone's decks to the stranger.
 struct ScanView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -12,6 +14,10 @@ struct ScanView: View {
     @State private var allowed: Bool?
     @State private var busy = false
     @State private var problem: String?
+    /// A scanned pairing link waiting for "Pair": the scanner ignores other codes meanwhile.
+    @State private var pending: String?
+
+    private var pendingHost: String { pending.flatMap { Pairing.parse($0) }?.host ?? "" }
 
     var body: some View {
         NavigationStack {
@@ -52,16 +58,30 @@ struct ScanView: View {
             .task {
                 allowed = await AVCaptureDevice.requestAccess(for: .video)
             }
+            .alert("Pair with \(pendingHost)?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } })) {
+                Button("Pair") {
+                    if let text = pending { pair(text) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Only pair with your own sync server or Conclave Cloud. This server will get your decks, opponents and games.")
+            }
             .sensoryFeedback(.error, trigger: problem) { _, new in new != nil }
         }
     }
 
     private func found(_ text: String) {
-        guard !busy else { return }
+        guard !busy, pending == nil else { return }
         guard Pairing.parse(text) != nil else {
             problem = "This QR code isn't a Conclave pairing code."
             return
         }
+        problem = nil
+        pending = text
+    }
+
+    private func pair(_ text: String) {
+        guard !busy else { return }
         busy = true
         problem = nil
         Task {

@@ -29,8 +29,16 @@ import Testing
     @Test func normalizesServers() {
         #expect(Pairing.normalizeServer("sync.example.org/app/")?.absoluteString == "https://sync.example.org")
         #expect(Pairing.normalizeServer("http://localhost:8080")?.absoluteString == "http://localhost:8080")
+        // plain http carries the token readable on the way: only for a test server on this machine
+        #expect(Pairing.normalizeServer("http://sync.example.org") == nil)
+        #expect(Pairing.parse("http://sync.example.org/koppeln#ABCD-EFGH") == nil)
         #expect(Pairing.normalizeServer("nonsense") == nil)
         #expect(Pairing.normalizeServer("ftp://sync.example.org") == nil)
         #expect(Pairing.normalizeServer("") == nil)
+    }
+
+    @Test func hostIsWhatTheAppShows() {
+        #expect(Pairing.parse("https://Sync.Example.org/koppeln#ABCD-EFGH")?.host == "sync.example.org")
+        #expect(Pairing.parse("https://sync.example.org:8443/koppeln#ABCD-EFGH")?.host == "sync.example.org:8443")
     }
 }
