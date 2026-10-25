@@ -6,7 +6,7 @@ import SwiftUI
 struct DecksView: View {
     let device: Device
     @Environment(AppModel.self) private var model
-    @State private var path: [String] = ["deck", "rule0", "card", "log-game"].contains(AppModel.startScreen)
+    @State private var path: [String] = ["deck", "rule0", "card", "log-game", "saved"].contains(AppModel.startScreen)
         ? [AppModel.demo?.decks.first?.slug].compactMap { $0 } : []
 
     var body: some View {
@@ -36,6 +36,7 @@ struct DecksView: View {
                 }
             }
         }
+        .outboxStatus()
     }
 
     /// Pinned, the rest, paused; empty groups left out.

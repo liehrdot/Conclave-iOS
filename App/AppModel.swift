@@ -29,6 +29,12 @@ final class AppModel {
     private(set) var statusFailed = false
     /// Why the phone is no longer paired, when the PC signed it off; shown on the welcome screen.
     private(set) var notice: String?
+    /// The game the `saved` screenshot logs: a win with the demo's first deck.
+    static let screenshotGame: JSONValue = .object([
+        "game": .object(["id": .string("shot1"), "deck": .string("meren-aristocrats"), "result": .string("win"), "place": .int(1)]),
+        "opponents": .array([.object(["id": .string("o-atraxa"), "commander": .string("Atraxa, Praetors' Voice"), "place": .int(2)])]),
+    ])
+
     /// The made-up account from the welcome screen ("Try the Demo"): nothing is sent anywhere.
     var inDemo: Bool { device == .demo }
     /// Card texts and Scryfall's printings, looked up by name (the read model has only names).
@@ -118,13 +124,44 @@ final class AppModel {
 
     /// Saves a change made on the phone (a game, an opponent edit): shown at once, sent right after,
     /// and kept in the outbox until the server has it. In the demo it stays on this phone.
+    /// The toast with "Undo" shows it for a few seconds.
     @discardableResult
     func save(_ type: String, _ payload: JSONValue) async -> PendingOp {
         let op = await outbox.add(type, payload)
         await showOps()
+        saved = Saved(op: op, text: "\(op.summary(in: library)) saved")
         Task { await send(force: true) }
         return op
     }
+
+    /// The change just saved, for the toast with "Undo"; nil once the toast is gone.
+    var saved: Saved?
+
+    struct Saved: Identifiable, Equatable {
+        var id: String { op.id }
+        let op: PendingOp
+        let text: String
+    }
+
+    /// Takes a change back (the toast's "Undo"): one still waiting is simply dropped, one already sent
+    /// gets its opposite sent (`Outbox.undo`, the PWA's `undo()`).
+    func undo(_ op: PendingOp) async {
+        saved = nil
+        let opposite = await outbox.undo(op)
+        await showOps()
+        if opposite != nil { await send(force: true) }
+    }
+
+    /// Forgets a change the server refused, once the person has read why.
+    func dismiss(_ op: PendingOp) async {
+        await outbox.drop(id: op.id)
+        await showOps()
+    }
+
+    /// Changes not sent yet: shown as a quiet line, never in the demo (nothing is sent there).
+    var waiting: [PendingOp] { inDemo ? [] : ops.filter { $0.status == .pending } }
+    /// Changes the server refused for good, with its reason.
+    var refused: [PendingOp] { ops.filter { $0.status == .failed } }
 
     /// Sends what waits in the outbox. After a batch went through, the next read model is fetched so the
     /// server's copy replaces the guess; on a failure the outbox waits (5 s, doubling) and the next
@@ -191,7 +228,7 @@ extension AppModel {
     /// The screen the CI screenshots open (`CONCLAVE_SCREEN`, scripts/screenshots.sh); nil in normal use.
     static let startScreen = ProcessInfo.processInfo.environment["CONCLAVE_SCREEN"]
     /// Screens that show the made-up account in `demo.json`.
-    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "log-game", "opponents", "opponent", "settings"]
+    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "log-game", "saved", "opponents", "opponent", "settings"]
 
     /// The real app keeps the device in the Keychain and the decks in Application Support (not Caches:
     /// iOS may empty those); a screenshot starts from a made-up state instead.
@@ -206,6 +243,7 @@ extension AppModel {
         if demoScreens.contains(screen) {
             let model = AppModel(store: MemoryDeviceStore(), cache: nil, transport: transport)
             model.showDemo()
+            if screen == "saved" { Task { await model.save("game.add", Self.screenshotGame) } }
             return model
         }
         let model = AppModel(store: MemoryDeviceStore(), cache: nil, transport: transport)
