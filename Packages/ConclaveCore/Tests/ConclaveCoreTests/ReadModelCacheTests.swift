@@ -16,6 +16,10 @@ import Testing
         #expect(!got.decks.isEmpty)
         #expect(cache.load()?.etag == "\"ab-1-7\"")
         #expect(cache.load()?.model == got)
+        // the raw copy, the base the phone's own changes are applied to, reads as the same model
+        let raw = try #require(cache.loadJSON())
+        #expect(raw.etag == "\"ab-1-7\"")
+        #expect(try ReadModel.decode(raw.json) == got)
 
         let again = FakeTransport(.init(status: 304))
         #expect(try await cache.refresh(from: server(again)) == nil)
@@ -23,6 +27,7 @@ import Testing
         #expect(cache.load()?.model == got)
         cache.clear()
         #expect(cache.load() == nil)
+        #expect(cache.loadJSON() == nil)
     }
 
     @Test func aFailureOrABrokenBodyKeepsTheSavedCopy() async throws {

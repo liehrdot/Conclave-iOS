@@ -18,6 +18,12 @@ public struct ReadModelCache: Sendable {
         return (model, (try? String(contentsOf: tagFile, encoding: .utf8)) ?? "")
     }
 
+    /// The saved read model as raw JSON, with its tag: the base `Optimistic.apply` builds on.
+    public func loadJSON() -> (json: JSONValue, etag: String)? {
+        guard let data = try? Data(contentsOf: dataFile), let json = try? JSONDecoder().decode(JSONValue.self, from: data) else { return nil }
+        return (json, (try? String(contentsOf: tagFile, encoding: .utf8)) ?? "")
+    }
+
     public func save(_ data: Data, etag: String) throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         try data.write(to: dataFile, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])

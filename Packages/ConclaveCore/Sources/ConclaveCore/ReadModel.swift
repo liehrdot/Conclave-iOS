@@ -39,6 +39,11 @@ public struct ReadModel: Decodable, Equatable, Sendable {
         return try decoder.decode(ReadModel.self, from: data)
     }
 
+    /// The same from JSON already read, e.g. what `Optimistic.apply` made.
+    public static func decode(_ json: JSONValue) throws -> ReadModel {
+        try decode(JSONEncoder().encode(json))
+    }
+
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         decks = try c.decodeIfPresent([Deck].self, forKey: .decks) ?? []

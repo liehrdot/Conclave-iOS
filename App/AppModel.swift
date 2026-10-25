@@ -8,8 +8,15 @@ import UIKit
 @MainActor @Observable
 final class AppModel {
     private(set) var device: Device?
-    /// The read model: the saved copy at once, then whatever `refresh()` brings. nil before the first download.
+    /// The read model as the screens show it: the server's copy (`base`) with this phone's own changes from
+    /// the outbox applied on top (`Optimistic`). nil before the first download.
     private(set) var library: ReadModel?
+    /// The phone's changes the server hasn't confirmed yet: waiting, sent, or refused (`PendingOp.Status`).
+    private(set) var ops: [PendingOp] = []
+    /// The read model exactly as the server sent it (raw, so keys the app doesn't know survive).
+    private var base: JSONValue?
+    private var outbox: Outbox
+    private let outboxFile: URL?
     /// Why the last update failed (offline, server error); nil once one worked.
     private(set) var problem: String?
     /// When the server last answered a refresh (new data or "unchanged").
@@ -30,13 +37,17 @@ final class AppModel {
     private let cache: ReadModelCache?
     private let transport: any Transport
 
-    init(store: any DeviceStore, cache: ReadModelCache?, transport: any Transport, cardFile: URL? = nil) {
+    init(store: any DeviceStore, cache: ReadModelCache?, transport: any Transport, cardFile: URL? = nil, outboxFile: URL? = nil) {
         cards = CardLibrary(scryfall: Scryfall(transport: transport), file: cardFile)
         self.store = store
         self.cache = cache
         self.transport = transport
+        self.outboxFile = outboxFile
+        outbox = Outbox(file: outboxFile)
         device = store.load()
-        library = cache?.load()?.model
+        base = cache?.loadJSON()?.json
+        library = base.flatMap { try? ReadModel.decode($0) }
+        Task { await showOps() }
         // the demo stays on across launches until "Leave Demo", like the PWA's `amtisch.mode`
         if device == nil, UserDefaults.standard.bool(forKey: Self.demoKey) { showDemo() }
     }
@@ -53,6 +64,9 @@ final class AppModel {
 
     private func showDemo() {
         device = .demo
+        outbox = Outbox(file: nil)  // the demo's games live in memory only and are never sent
+        ops = []
+        base = Self.demoJSON
         library = Self.demo
         // never "Loading…" forever: the core tests check that demo.json decodes, this is the last guard
         problem = Self.demo == nil ? "The demo couldn't be opened." : nil
@@ -64,6 +78,9 @@ final class AppModel {
         UserDefaults.standard.removeObject(forKey: Self.demoKey)
         device = nil
         library = nil
+        base = nil
+        ops = []
+        outbox = Outbox(file: outboxFile)
         await cards.clear()
     }
 
@@ -81,22 +98,70 @@ final class AppModel {
         let outcome = await Connection.refresh(device, store: store, cache: cache, transport: transport)
         guard self.device?.id == device.id else { return } // signed out or paired again meanwhile
         switch outcome {
-        case .changed(let model):
-            library = model
+        case .changed, .unchanged:
             problem = nil
             lastUpdate = .now
-        case .unchanged:
-            problem = nil
-            lastUpdate = .now
+            // the sent ops this copy contains can go; the rest stays applied on top of it
+            if let saved = cache.loadJSON() {
+                base = saved.json
+                await outbox.confirm(etag: saved.etag)
+            }
+            await showOps()
+            if !(await outbox.pending.isEmpty) { await send() }
         case .failed(let message):
             problem = message
         case .signedOff:
-            self.device = nil
-            library = nil
+            await forgetAccount()
             notice = ServerError.signedOff.message
-            status = nil
-            await cards.clear()
         }
+    }
+
+    /// Saves a change made on the phone (a game, an opponent edit): shown at once, sent right after,
+    /// and kept in the outbox until the server has it. In the demo it stays on this phone.
+    @discardableResult
+    func save(_ type: String, _ payload: JSONValue) async -> PendingOp {
+        let op = await outbox.add(type, payload)
+        await showOps()
+        Task { await send(force: true) }
+        return op
+    }
+
+    /// Sends what waits in the outbox. After a batch went through, the next read model is fetched so the
+    /// server's copy replaces the guess; on a failure the outbox waits (5 s, doubling) and the next
+    /// refresh tries again.
+    func send(force: Bool = false) async {
+        guard let device, !inDemo else { return }
+        let outcome = await outbox.flush(to: Server(device: device, transport: transport), force: force)
+        guard self.device?.id == device.id else { return }
+        await showOps()
+        switch outcome {
+        case .sent(_, let more):
+            if more { await send(force: true) } else { await refresh() }
+        case .signedOff:
+            await forgetAccount()
+            notice = ServerError.signedOff.message
+        case .nothing, .waiting, .failed:
+            break
+        }
+    }
+
+    /// Shows the outbox's ops on top of the server's copy.
+    private func showOps() async {
+        ops = await outbox.ops
+        guard let base else { return }
+        let shown = Optimistic.apply(ops, to: base)
+        library = (try? ReadModel.decode(shown)) ?? library
+    }
+
+    /// The PC signed this phone off: the device, its decks and its unsent changes go.
+    private func forgetAccount() async {
+        device = nil
+        library = nil
+        base = nil
+        status = nil
+        await outbox.clear()
+        ops = []
+        await cards.clear()
     }
 
     /// Asks the server which PCs are there and online (`GET /api/app/status`), for the settings.
@@ -116,12 +181,9 @@ final class AppModel {
         guard let device, !inDemo else { return await leaveDemo() }
         await Connection.signOff(device, store: store, transport: transport)
         cache?.clear()
-        self.device = nil
-        library = nil
+        await forgetAccount()
         problem = nil
-        status = nil
         lastUpdate = nil
-        await cards.clear()
     }
 }
 
@@ -129,7 +191,7 @@ extension AppModel {
     /// The screen the CI screenshots open (`CONCLAVE_SCREEN`, scripts/screenshots.sh); nil in normal use.
     static let startScreen = ProcessInfo.processInfo.environment["CONCLAVE_SCREEN"]
     /// Screens that show the made-up account in `demo.json`.
-    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "opponents", "opponent", "settings"]
+    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "log-game", "opponents", "opponent", "settings"]
 
     /// The real app keeps the device in the Keychain and the decks in Application Support (not Caches:
     /// iOS may empty those); a screenshot starts from a made-up state instead.
@@ -138,7 +200,8 @@ extension AppModel {
         guard let screen = startScreen else {
             let folder = URL.applicationSupportDirectory.appending(path: "ReadModel")
             return AppModel(store: KeychainDeviceStore(), cache: ReadModelCache(folder: folder), transport: transport,
-                            cardFile: URL.applicationSupportDirectory.appending(path: "Cards/cards.json"))
+                            cardFile: URL.applicationSupportDirectory.appending(path: "Cards/cards.json"),
+                            outboxFile: URL.applicationSupportDirectory.appending(path: "Outbox/outbox.json"))
         }
         if demoScreens.contains(screen) {
             let model = AppModel(store: MemoryDeviceStore(), cache: nil, transport: transport)
@@ -151,10 +214,12 @@ extension AppModel {
     }
 
     /// The made-up account (scripts/make_demo.py writes it from the web app's demo).
-    static let demo: ReadModel? = {
+    static let demo: ReadModel? = demoJSON.flatMap { try? ReadModel.decode($0) }
+
+    static let demoJSON: JSONValue? = {
         guard let url = Bundle.main.url(forResource: "demo", withExtension: "json"), let data = try? Data(contentsOf: url)
         else { return nil }
-        return try? ReadModel.decode(data)
+        return try? JSONDecoder().decode(JSONValue.self, from: data)
     }()
 }
 

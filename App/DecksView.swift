@@ -6,7 +6,7 @@ import SwiftUI
 struct DecksView: View {
     let device: Device
     @Environment(AppModel.self) private var model
-    @State private var path: [String] = ["deck", "rule0", "card"].contains(AppModel.startScreen)
+    @State private var path: [String] = ["deck", "rule0", "card", "log-game"].contains(AppModel.startScreen)
         ? [AppModel.demo?.decks.first?.slug].compactMap { $0 } : []
 
     var body: some View {
@@ -100,6 +100,7 @@ struct DeckView: View {
     let deck: Deck
     @Environment(AppModel.self) private var model
     @State private var showingRule0 = AppModel.startScreen == "rule0"
+    @State private var loggingGame = AppModel.startScreen == "log-game"
     /// The card whose sheet is open; the screenshot opens the demo deck's foil.
     @State private var shownCard: ShownCard? = AppModel.startScreen == "card" ? ShownCard(name: "Birds of Paradise") : nil
     /// What the search field filters the cards by; while it has text only matching cards show.
@@ -140,6 +141,7 @@ struct DeckView: View {
         .navigationBarTitleDisplayMode(.inline) // the header shows the name big
         .refreshable { await model.refresh() }
         .sheet(isPresented: $showingRule0) { Rule0View(deck: deck) }
+        .sheet(isPresented: $loggingGame) { LogGameView(deck: deck, library: model.library) }
         .sheet(item: $shownCard) { shown in
             CardSheet(name: shown.name, copies: model.library?.copies(of: shown.name, in: deck) ?? [])
         }
@@ -204,15 +206,29 @@ struct DeckView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            Button {
-                showingRule0 = true
-            } label: {
-                Label("Rule 0", systemImage: "text.bubble")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+            HStack(spacing: 8) {
+                // the one green button on the screen: what the app is for at the table
+                Button {
+                    loggingGame = true
+                } label: {
+                    Label("Log a Game", systemImage: "plus")
+                        .font(.headline)
+                        .foregroundStyle(.black) // black on the neon, like the PWA
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.glassProminent)
+                .tint(Color("Neon"))
+                Button {
+                    showingRule0 = true
+                } label: {
+                    Label("Rule 0", systemImage: "text.bubble")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.glass)
             }
-            .buttonStyle(.glass)
             if deck.checking {
                 Label("Your PC checks the newest changes next time it syncs.", systemImage: "clock")
                     .font(.footnote)
