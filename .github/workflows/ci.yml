@@ -50,3 +50,30 @@ jobs:
           name: conclave-ios
           path: Conclave.ipa
           retention-days: 14
+
+  # how the screens look, light and dark, iPhone and iPad: the PR's "Artifacts" hold the pictures
+  screenshots:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Pick the newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      # the simulator runs unsigned apps, so no signing here either
+      - name: Build for the simulator
+        run: >
+          xcodebuild build
+          -project Conclave.xcodeproj -scheme Conclave -configuration Debug
+          -sdk iphonesimulator -destination "generic/platform=iOS Simulator" -derivedDataPath build
+          CODE_SIGNING_ALLOWED=NO
+      - run: scripts/screenshots.sh build/Build/Products/Debug-iphonesimulator/Conclave.app screenshots
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: screenshots
+          path: screenshots
+          retention-days: 14
