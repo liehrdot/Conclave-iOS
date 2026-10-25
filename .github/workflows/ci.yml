@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # ConclaveCore has no UI, so its tests run on Linux: fast, and they run on every push
+  tests:
+    runs-on: ubuntu-latest
+    container: swift:6.2-noble
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: swift test --package-path Packages/ConclaveCore
+
+  # the app itself needs a Mac: GitHub's runner is ours
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Pick the newest Xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      # unsigned: iloader (docs/sideload.md) signs it with your own Apple ID when it installs it
+      - name: Build
+        run: >
+          xcodebuild build
+          -project Conclave.xcodeproj -scheme Conclave -configuration Release
+          -sdk iphoneos -destination "generic/platform=iOS" -derivedDataPath build
+          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+      # an .ipa is only a zip with the app in a Payload folder
+      - name: Pack the .ipa
+        run: |
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/Conclave.app Payload/
+          zip -qr Conclave.ipa Payload
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: conclave-ios
+          path: Conclave.ipa
+          retention-days: 14
