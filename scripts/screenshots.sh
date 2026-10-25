@@ -10,7 +10,7 @@ set -euo pipefail
 
 app="$1"
 out="$2"
-SCREENS=(welcome)
+SCREENS=(welcome code paired)
 DEVICES=("iPhone" "iPad")
 bundle=app.conclave.mobile
 

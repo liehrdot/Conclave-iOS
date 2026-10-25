@@ -37,14 +37,23 @@ public struct Pairing: Equatable, Sendable {
     }
 
     /// Scheme, host and port only: a server is always addressed at its root.
+    /// Plain http only for `localhost` (a test server on the same machine): the token travels in every
+    /// request, so anywhere else it must be https. Stricter than Conclave Table, which runs in a browser.
     static func origin(_ parts: URLComponents) -> URL? {
-        guard let scheme = parts.scheme?.lowercased(), scheme == "https" || scheme == "http",
-              let host = parts.host?.lowercased(), host.contains(".") || host == "localhost"
+        guard let scheme = parts.scheme?.lowercased(),
+              let host = parts.host?.lowercased(), host.contains(".") || host == "localhost",
+              scheme == "https" || (scheme == "http" && host == "localhost")
         else { return nil }
         var root = URLComponents()
         root.scheme = scheme
         root.host = host
         root.port = parts.port
         return root.url
+    }
+
+    /// The server as people read it: `sync.example.org`, with the port when there is one.
+    public var host: String {
+        let parts = URLComponents(url: server, resolvingAgainstBaseURL: false)
+        return (parts?.host ?? "") + (parts?.port.map { ":\($0)" } ?? "")
     }
 }
