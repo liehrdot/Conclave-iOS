@@ -1,5 +1,6 @@
 import ConclaveCore
 import SwiftUI
+import UIKit
 
 /// "Log a Game": the result first and big, then who sat at the table and the places, the rest under
 /// "More Details". Saving puts a `game.add` in the outbox: the game shows up in the deck and opponent
@@ -165,12 +166,12 @@ private struct ResultPicker: View {
                 Image(systemName: symbol).font(.title2).frame(height: 30) // the same height for every symbol, so the three line up
                 Text(labels[key] ?? fallback).font(.headline)
             }
-            .foregroundStyle(picked ? .black : .primary)
+            .foregroundStyle(picked ? Color.accentColor : .primary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
         }
         .buttonStyle(.plain)
-        .glassEffect(picked ? .regular.tint(Color("Neon")).interactive() : .regular.interactive(), in: .rect(cornerRadius: 18))
+        .glassEffect(picked ? .regular.tint(Picked.fill).interactive() : .regular.interactive(), in: .rect(cornerRadius: 18))
         .accessibilityAddTraits(picked ? .isSelected : [])
     }
 }
@@ -193,7 +194,7 @@ private struct PlaceRow: View {
                 if place == 1 {
                     Label("Winner", systemImage: "trophy.fill")
                         .font(.caption)
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(Medal.gold.text)
                 }
             }
             Spacer(minLength: 4)
@@ -202,8 +203,8 @@ private struct PlaceRow: View {
                     Button("\(number)") { pick(number) }
                         .font(.subheadline.weight(.semibold).monospacedDigit())
                         .frame(width: 34, height: 34)
-                        .foregroundStyle(place == number ? .black : .primary)
-                        .background(Circle().fill(place == number ? Color("Neon") : Color.secondary.opacity(0.15)))
+                        .foregroundStyle(place != number ? Color.primary : Medal.of(number) == nil ? Color.accentColor : Color.black)
+                        .background(Circle().fill(place == number ? Medal.of(number)?.fill ?? Picked.fill : Color.secondary.opacity(0.15)))
                         .buttonStyle(.plain)
                         .accessibilityLabel("Place \(number)")
                         .accessibilityAddTraits(place == number ? .isSelected : [])
@@ -232,8 +233,8 @@ private struct ChoiceChips: View {
                         .font(.subheadline)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .foregroundStyle(on ? .black : .primary)
-                        .background(Capsule().fill(on ? Color("Neon") : Color.secondary.opacity(0.15)))
+                        .foregroundStyle(on ? Color.accentColor : .primary)
+                        .background(Capsule().fill(on ? Picked.fill : Color.secondary.opacity(0.15)))
                         .buttonStyle(.plain)
                         .accessibilityAddTraits(on ? .isSelected : [])
                 }
@@ -355,5 +356,46 @@ private struct OpponentPicker: View {
         let card = try? await model.cards.card(named: typed)
         add(.init(commander: card?.name ?? typed, colors: card?.colors ?? ""))
         dismiss()
+    }
+}
+
+/// A picked choice on this sheet: a soft wash of the accent with accent text, calmer on the eyes than a
+/// neon fill (Flo's ask). The neon stays for the one main button per screen.
+private enum Picked {
+    static let fill = Color.accentColor.opacity(0.22)
+}
+
+/// Gold, silver and bronze for places 1 to 3, with black numbers on them; places 4 to 6 use `Picked`.
+/// Muted metal tones, a touch darker in light mode so they still stand out on the pale glass.
+private enum Medal {
+    case gold, silver, bronze
+
+    static func of(_ place: Int) -> Medal? { [1: .gold, 2: .silver, 3: .bronze][place] }
+
+    var fill: Color {
+        switch self {
+        case .gold: Color(light: 0xD9B44A, dark: 0xE3C46A)
+        case .silver: Color(light: 0xB9C0C8, dark: 0xC9CED6)
+        case .bronze: Color(light: 0xC58B5C, dark: 0xD49A6A)
+        }
+    }
+
+    /// For text in the metal's colour (the "Winner" label): darker in light mode to be readable.
+    var text: Color {
+        switch self {
+        case .gold: Color(light: 0x9A7414, dark: 0xE3C46A)
+        case .silver: Color(light: 0x6B737C, dark: 0xC9CED6)
+        case .bronze: Color(light: 0x8F5A2E, dark: 0xD49A6A)
+        }
+    }
+}
+
+private extension Color {
+    /// One colour for light mode and one for dark, from hex values.
+    init(light: UInt32, dark: UInt32) {
+        func ui(_ hex: UInt32) -> UIColor {
+            UIColor(red: CGFloat(hex >> 16 & 0xFF) / 255, green: CGFloat(hex >> 8 & 0xFF) / 255, blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+        }
+        self.init(uiColor: UIColor { $0.userInterfaceStyle == .dark ? ui(dark) : ui(light) })
     }
 }
