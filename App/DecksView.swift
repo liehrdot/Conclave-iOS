@@ -94,8 +94,23 @@ struct DeckView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(deck.commanders.joined(separator: " + "))
+                    // tap a commander for its card, like any card in the list
+                    ForEach(deck.commanders, id: \.self) { commander in
+                        Button {
+                            shownCard = ShownCard(name: commander)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(commander)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
                         .font(.headline)
+                        .foregroundStyle(.primary)
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Shows the card")
+                    }
                     HStack(spacing: 8) {
                         ColorPips(colors: deck.colors)
                         if let level = deck.shownLevel { Text(level) }
