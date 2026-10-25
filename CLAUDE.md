@@ -65,7 +65,8 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   `DeckView` → `Rule0View` sheet, `LogGameView` sheet ("Log a Game": result, opponents via `OpponentPicker`,
   places, "More Details"), `CardSheet` per card: the own copy's printing (foil sheen, several copies to pick),
   else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`: tag chips "What It Does" save on a tap, "Add Note" › `AddNoteView`,
-  "Edit" › `EditOpponentView` (name, player, bracket; not the commander yet)); both tabs carry `.outboxStatus()` (`App/OutboxStatus.swift`: a glass pill above the tab
+  "Edit" › `EditOpponentView` (name, player, bracket; not the commander yet)) and the search tab Cards (`CardsView`, `Tab(role: .search)`:
+  `.searchable`, `find(name:)` 300 ms after typing pauses, rows with `CardArt`, the last 12 opened in `AppStorage` `recentCards`, tap › `CardSheet`); both tabs carry `.outboxStatus()` (`App/OutboxStatus.swift`: a glass pill above the tab
   bar = the "… saved" toast with "Undo" for 6 s, else "N changes weren't saved" › `RefusedChanges` sheet, else a quiet
   "N changes waiting to be sent" that sends on a tap; never "waiting" in the demo), `SettingsView` from the gear (a short list like the iPhone's Settings: Connection row › `ConnectionView` (server, this
   device, last update, "Your PCs" from `AppModel.loadStatus()` = `GET /api/app/status`, `ServerStatus.PC.lastSeen(now:)` on the
@@ -73,7 +74,7 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   Screens for screenshots: `welcome`, `code`, `scan` (the simulator has no camera: "No Camera"), `signed-off`, and
   with the made-up account `App/Resources/demo.json` (written by `scripts/make_demo.py` from the web app's demo):
   `decks`, `deck`, `rule0`, `log-game` (a filled-in loss), `saved` (the deck screen with the toast after `screenshotGame`), `card` (the foil Birds of Paradise placed in the first deck; picture from Scryfall),
-  `opponents`, `opponent`, `edit-opponent`, `settings` (the demo's settings) (`AppModel.launch()`, no Keychain).
+  `opponents`, `opponent`, `edit-opponent`, `cards` (a search for "Sol"), `settings` (the demo's settings) (`AppModel.launch()`, no Keychain).
   Demo mode: "No PC at hand? Try the Demo" on the welcome screen = `AppModel.startDemo()`: the same `demo.json` with
   the stand-in `Device.demo` (never saved, no token, `refresh()` skips it), kept across launches in UserDefaults
   `demo` like the PWA's `amtisch.mode`; "Demo" in the top bar (`DemoBadge`) and Settings › "Leave Demo".

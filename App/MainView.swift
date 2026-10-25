@@ -1,12 +1,17 @@
 import ConclaveCore
 import SwiftUI
 
-/// A paired phone: the tabs. Decks and Opponents for now; the table and the cards follow.
+/// A paired phone: the tabs Decks and Opponents, and Cards as the search tab (iOS 26 sets it apart
+/// at the end of the tab bar).
 struct MainView: View {
     let device: Device
-    @State private var page: Page = ["opponents", "opponent", "edit-opponent"].contains(AppModel.startScreen) ? .opponents : .decks
+    @State private var page: Page = switch AppModel.startScreen {
+    case "opponents", "opponent", "edit-opponent": .opponents
+    case "cards": .cards
+    default: .decks
+    }
 
-    enum Page: Hashable { case decks, opponents }
+    enum Page: Hashable { case decks, opponents, cards }
 
     var body: some View {
         TabView(selection: $page) {
@@ -15,6 +20,9 @@ struct MainView: View {
             }
             Tab("Opponents", systemImage: "person.2", value: Page.opponents) {
                 OpponentsView(device: device)
+            }
+            Tab("Cards", systemImage: "magnifyingglass", value: Page.cards, role: .search) {
+                CardsView(device: device)
             }
         }
         .tabViewStyle(.sidebarAdaptable) // a sidebar on the iPad, a tab bar on the iPhone
