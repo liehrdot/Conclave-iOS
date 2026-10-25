@@ -4,8 +4,7 @@ import Testing
 
 /// The shared operation cases from Conclave (`docs/app-api/ops.json`, copied by
 /// `scripts/update_api_cases.sh`): what the server's `appops.apply` does with each operation.
-/// For now these tests only check that the file is complete and readable; milestone 2's optimistic
-/// apply will run every case against it.
+/// These tests check that the file is complete and readable; `OptimisticTests` runs the cases.
 @Suite struct APICasesTests {
     static let file: JSONValue = {
         let url = Bundle.module.url(forResource: "ops", withExtension: "json")!

@@ -47,6 +47,8 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   sign-out). `Outbox` (an actor, kept in a file) = the phone's changes on their way to the server, like the web app's
   `data.js`: `add`, `flush(to:)` (`POST /api/app/ops`, batches of 50, backoff 5 s → 5 min, `retry` stays, refused → `failed`),
   `confirm(etag:)` drops sent ops once a read model's seq covers their ack, `undo` (drop if unsent, else `inverse` = `INVERSE`).
+  `Optimistic.apply(ops, to:)` = the read model as it will look once the server has the outbox's ops (`data.js` `apply()` +
+  `recompute()`, on the raw JSON): games and opponent decks so far, checked against every matching `ops.json` case.
   `Mana.pieces` splits `{2}{B}`/`{T}` text into symbols (`Kind`, `spoken` for VoiceOver).
 - App: `AppModel` (paired device, `library` = the read model from `ReadModelCache`, `refresh()` on opening, on
   return and every minute via `Connection.refresh`; a 401 leads back to the welcome screen), `RootView` (welcome or
