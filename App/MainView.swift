@@ -42,8 +42,9 @@ private struct TabLabel: View {
     let title: String
     let image: UIImage
 
-    /// The space a tab symbol may take, in points: about what `rectangle.stack` takes on its own.
-    private static let box = CGSize(width: 24, height: 20)
+    /// The space a tab symbol may take, in points (iOS shows it about a sixth smaller): tall symbols
+    /// keep about their usual size, wide ones are held to about a quarter less than theirs.
+    private static let box = CGSize(width: 28, height: 26)
 
     init(_ title: String, systemImage: String) {
         self.title = title
