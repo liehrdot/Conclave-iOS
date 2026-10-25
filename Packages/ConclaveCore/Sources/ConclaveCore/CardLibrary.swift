@@ -4,7 +4,8 @@ import Foundation
 /// and a deck's cards are looked up together in one request when its page opens. Mirrors the name
 /// cache and `info()` in the PWA's `scry.js`.
 public actor CardLibrary {
-    let scryfall: Scryfall
+    /// Scryfall itself, for searches (they go past the library: a search's results change, a card doesn't).
+    public let scryfall: Scryfall
     /// The file, or nil to keep the cards in memory only (screenshots, tests).
     let file: URL?
     private var cards: [String: Card] = [:]
@@ -45,6 +46,17 @@ public actor CardLibrary {
         for name in names {
             guard let card = found[name] else { unknown.insert(name); continue }
             cards[name] = card
+            cards[card.name] = card
+            cards[card.front] = card
+        }
+        save()
+    }
+
+    /// Keeps cards a search brought (English ones only: the library shows every card in English), so
+    /// their card sheet opens at once and offline.
+    public func remember(_ found: [Card]) {
+        load()
+        for card in found where card.lang == "en" {
             cards[card.name] = card
             cards[card.front] = card
         }

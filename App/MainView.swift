@@ -1,23 +1,74 @@
 import ConclaveCore
 import SwiftUI
 
-/// A paired phone: the tabs. Decks and Opponents for now; the table and the cards follow.
+/// A paired phone: the tabs Decks and Opponents, and Cards as the search tab (iOS 26 sets it apart
+/// at the end of the tab bar).
 struct MainView: View {
     let device: Device
-    @State private var page: Page = ["opponents", "opponent", "edit-opponent"].contains(AppModel.startScreen) ? .opponents : .decks
+    @State private var page: Page = switch AppModel.startScreen {
+    case "opponents", "opponent", "edit-opponent": .opponents
+    case "cards": .cards
+    default: .decks
+    }
 
-    enum Page: Hashable { case decks, opponents }
+    enum Page: Hashable { case decks, opponents, cards }
 
     var body: some View {
         TabView(selection: $page) {
-            Tab("Decks", systemImage: "rectangle.stack", value: Page.decks) {
+            Tab(value: Page.decks) {
                 DecksView(device: device)
+            } label: {
+                TabLabel("Decks", systemImage: "rectangle.stack.fill")
             }
-            Tab("Opponents", systemImage: "person.2", value: Page.opponents) {
+            Tab(value: Page.opponents) {
                 OpponentsView(device: device)
+            } label: {
+                TabLabel("Opponents", systemImage: "person.2.fill")
+            }
+            Tab("Cards", systemImage: "magnifyingglass", value: Page.cards, role: .search) {
+                CardsView(device: device)
             }
         }
         .tabViewStyle(.sidebarAdaptable) // a sidebar on the iPad, a tab bar on the iPhone
+    }
+}
+
+/// A tab's name and symbol, the symbol drawn to fit a fixed box. While the search tab is open, iOS
+/// folds the other tabs into one round button and draws a symbol there at the height of its text, so
+/// a wide one like `person.2` fills the button edge to edge (and iOS ignores `imageScale` there). A
+/// plain picture is drawn at its own size, so the symbol goes in as one, fitted into `box`. Template
+/// rendering keeps iOS's colours for the picked and the other tabs.
+private struct TabLabel: View {
+    let title: String
+    let image: UIImage
+
+    /// The space a tab symbol may take, in points (iOS shows it about a sixth smaller): tall symbols
+    /// keep about their usual size, wide ones are held to about a quarter less than theirs.
+    private static let box = CGSize(width: 28, height: 26)
+
+    init(_ title: String, systemImage: String) {
+        self.title = title
+        image = Self.fitted(systemImage)
+    }
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(uiImage: image)
+        }
+    }
+
+    private static func fitted(_ name: String) -> UIImage {
+        let config = UIImage.SymbolConfiguration(pointSize: 40, weight: .medium)
+        guard let symbol = UIImage(systemName: name, withConfiguration: config) else { return UIImage() }
+        let scale = min(box.width / symbol.size.width, box.height / symbol.size.height)
+        let size = CGSize(width: symbol.size.width * scale, height: symbol.size.height * scale)
+        let origin = CGPoint(x: (box.width - size.width) / 2, y: (box.height - size.height) / 2)
+        let drawn = UIGraphicsImageRenderer(size: box).image { _ in
+            symbol.withTintColor(.black).draw(in: CGRect(origin: origin, size: size))
+        }
+        return drawn.withRenderingMode(.alwaysTemplate)
     }
 }
 
