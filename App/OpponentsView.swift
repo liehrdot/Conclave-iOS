@@ -193,7 +193,7 @@ struct OpponentView: View {
             }
             HStack(spacing: 8) {
                 ColorPips(colors: opponent.colors ?? "")
-                if let bracket = opponent.bracket { Chip(text: "Bracket \(bracket)") }
+                if let bracket = opponent.bracket { Chip.bracket(bracket) }
                 if let player = opponent.player, !player.isEmpty {
                     Text("Played by \(player)")
                         .font(.subheadline)

@@ -48,17 +48,58 @@ struct ArtBackdrop: View {
     }
 }
 
-/// A small outlined label in a capsule: the bracket, "Proxy", "Not legal".
+/// A small label in a capsule, coloured only where the colour means something (Flo's pick,
+/// 2026-10-26): a bracket is a solid pill that gets warmer as the deck gets stronger, a problem
+/// ("Not legal") is solid red with a warning sign, anything else ("Proxy") is plain glass.
 struct Chip: View {
+    enum Kind {
+        case plain
+        case bracket(Int)
+        case problem
+    }
+
     let text: String
+    var kind: Kind = .plain
+
+    /// "Bracket 3" in its colour.
+    static func bracket(_ bracket: Int) -> Chip { Chip(text: "Bracket \(bracket)", kind: .bracket(bracket)) }
 
     var body: some View {
+        switch kind {
+        case .plain:
+            label.foregroundStyle(.primary).glassEffect(.regular, in: .capsule)
+        case let .bracket(bracket):
+            let tone = Self.tone(bracket)
+            label.foregroundStyle(tone.text).background(Capsule().fill(tone.fill))
+        case .problem:
+            Label(text, systemImage: "exclamationmark.triangle.fill")
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .foregroundStyle(.white)
+                .background(Capsule().fill(Self.red))
+        }
+    }
+
+    private var label: some View {
         Text(text)
             .font(.caption.weight(.semibold))
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .foregroundStyle(Color.accentColor)
-            .background(Capsule().strokeBorder(Color.accentColor.opacity(0.6), lineWidth: 1))
+    }
+
+    private static let red = Color(red: 0.84, green: 0.20, blue: 0.18)
+
+    /// Bracket 1 blue, 2 green, 3 yellow, 4 orange, 5 red; each text colour keeps at least 4.5:1
+    /// against its fill, so the pill reads on any art.
+    static func tone(_ bracket: Int) -> (fill: Color, text: Color) {
+        switch bracket {
+        case ...1: (Color(red: 0.16, green: 0.42, blue: 0.80), .white)
+        case 2: (Color(red: 0.13, green: 0.50, blue: 0.27), .white)
+        case 3: (Color(red: 0.98, green: 0.80, blue: 0.20), .black)
+        case 4: (Color(red: 0.97, green: 0.55, blue: 0.16), .black)
+        default: (red, .white)
+        }
     }
 }
 
@@ -116,7 +157,7 @@ struct GlassTile<Facts: View>: View {
     let art: String
     let title: String
     var subtitle: String?
-    /// Shown as an orange sign, spoken by VoiceOver ("Not legal").
+    /// Shown as a red sign, spoken by VoiceOver ("Not legal"), the same red as a problem `Chip`.
     var warning: String?
     @ViewBuilder let facts: Facts
 
@@ -143,7 +184,7 @@ struct GlassTile<Facts: View>: View {
             Spacer(minLength: 0)
             if let warning {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.red)
                     .accessibilityLabel(warning)
             }
             Image(systemName: "chevron.right")

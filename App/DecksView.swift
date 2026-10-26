@@ -185,9 +185,9 @@ struct DeckView: View {
             }
             HStack(spacing: 8) {
                 ColorPips(colors: deck.colors)
-                if let bracket = deck.bracket { Chip(text: "Bracket \(bracket)") }
+                if let bracket = deck.bracket { Chip.bracket(bracket) }
                 if deck.proxy { Chip(text: "Proxy") }
-                if deck.legal == false { Chip(text: "Not legal") }
+                if deck.legal == false { Chip(text: "Not legal", kind: .problem) }
             }
             if let description = deck.description, !description.isEmpty {
                 Text(description)
