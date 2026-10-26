@@ -42,7 +42,9 @@ struct CollectionView: View {
                     Button { adding = true } label: {
                         Label("Add Card", systemImage: "plus")
                             .labelStyle(.titleAndIcon)
+                            .foregroundStyle(Color("OnAccent")) // white on the dark green, black on the neon
                     }
+                    .buttonStyle(.glassProminent) // the screen's one primary action: the accent colour behind it
                 }
                 if model.inDemo {
                     ToolbarItem(placement: .topBarLeading) { DemoBadge(device: device) }
