@@ -16,7 +16,7 @@
 # Add a name here when the app learns to open a new screen.
 set -euo pipefail
 
-SCREENS=(welcome code scan signed-off decks deck rule0 card log-game saved opponents opponent edit-opponent cards filters describe settings)
+SCREENS=(welcome code scan signed-off decks deck rule0 card log-game saved opponents opponent edit-opponent collection collection-card cards filters describe settings)
 DEVICES=("iPhone" "iPad")
 bundle=app.conclave.mobile
 

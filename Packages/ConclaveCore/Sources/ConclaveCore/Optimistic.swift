@@ -5,8 +5,8 @@ import Foundation
 /// Mirrors `apply()` and `recompute()` in the PWA's `data.js`, checked against Conclave's shared cases
 /// (`ops.json`) in `OptimisticTests`.
 ///
-/// It works on the raw JSON, not on `ReadModel`, so keys the app doesn't model survive. Games and opponent
-/// decks for now; the other types (decks, collection) leave the model as it is until their screens come.
+/// It works on the raw JSON, not on `ReadModel`, so keys the app doesn't model survive. Games, opponent
+/// decks and the collection for now; the deck types leave the model as it is until their screens come.
 /// An operation the server would refuse (no result, a deleted deck) is not shown: the server's answer
 /// marks it failed, with its reason.
 public enum Optimistic {
@@ -41,8 +41,12 @@ public enum Optimistic {
             model["opponents"] = .array(opponents.map(JSONValue.object))
         case "opponent.update", "opponent.note", "opponent.note_delete", "opponent.delete":
             changeOpponent(op, in: &model)
+        case "collection.add":
+            addToCollection(p, op: op, in: &model)
+        case "collection.update":
+            changeCollection(p, in: &model)
         default:
-            break  // decks and the collection: not shown at once yet
+            break  // decks: not shown at once yet
         }
     }
 
@@ -131,6 +135,75 @@ public enum Optimistic {
         model["opponents"] = .array(opponents.map(JSONValue.object))
     }
 
+    /// `appops._collection_add`: more copies of the entry with the same printing and place, else a new
+    /// entry; a negative `qty` takes copies away again (the undo of an add).
+    static func addToCollection(_ p: JSONValue, op: PendingOp, in model: inout Object) {
+        guard let e = p["entry"]?.object, let qty = e["qty"]?.int, qty != 0, (-99...99).contains(qty),
+              let name = text(e["name"]).map({ String($0.prefix(160)) }) else { return }
+        let (place, placeDeck) = cleanPlace(e["place"], e["place_deck"])
+        var entry: Object = [
+            "name": .string(name), "qty": .int(qty), "proxy": .bool(e["proxy"]?.bool == true), "foil": .bool(e["foil"]?.bool == true),
+            "lang": .string(e["lang"]?.string.flatMap { languages.contains($0) ? $0 : nil } ?? "en"),
+            "set": matching(e["set"]?.string?.lowercased(), isSetCode).map(JSONValue.string) ?? .null,
+            "set_name": text(e["set_name"]).map { .string(String($0.prefix(120))) } ?? .null,
+            "collector_number": matching(e["collector_number"]?.string, isCollectorNumber).map(JSONValue.string) ?? .null,
+            "scryfall_id": matching(e["scryfall_id"]?.string, isScryfallID).map(JSONValue.string) ?? .null,
+            "price_eur": matching(e["price_eur"]?.string, isPrice).map(JSONValue.string) ?? .null,
+            "place": .string(place), "place_deck": .string(placeDeck),
+        ]
+        var items = objects(model["collection"])
+        if let hit = items.firstIndex(where: { collectionKey($0) == collectionKey(entry) }) {
+            let left = min(9999, (items[hit]["qty"]?.int ?? 0) + qty)
+            if left > 0 { items[hit]["qty"] = .int(left) } else { items.remove(at: hit) }
+        } else {
+            guard qty > 0 else { return }  // nothing left to take away
+            let taken = Set(items.compactMap { $0["id"]?.string })
+            let id = e["id"]?.string.flatMap { isID($0) && !taken.contains($0) ? $0 : nil }
+            entry["id"] = .string(id ?? op.id)
+            if entry["scryfall_id"] == .null, let image = e["image"]?.string,
+               image.hasPrefix("https://cards.scryfall.io/"), image.count < 300 {
+                entry["image"] = .string(image)  // the read model keeps a picture only where the id can't give one
+            }
+            items.append(entry)
+        }
+        model["collection"] = .array(items.map(JSONValue.object))
+    }
+
+    /// `appops._collection_update`: `id` plus `qty` (0 deletes), `proxy`, `foil`, `lang`, `place` and
+    /// `place_deck`; then entries that now describe the same printing and place become one.
+    static func changeCollection(_ p: JSONValue, in model: inout Object) {
+        var items = objects(model["collection"])
+        guard let index = items.firstIndex(where: { $0["id"] != nil && $0["id"] == p["id"] }) else { return }
+        var entry = items[index]
+        if let qty = p["qty"] {
+            guard let qty = qty.int, (0...9999).contains(qty) else { return }  // the server refuses it
+            entry["qty"] = .int(qty)
+        }
+        for key in ["proxy", "foil"] where p[key] != nil {
+            entry[key] = .bool(p[key]?.bool == true)
+        }
+        if let lang = p["lang"] { entry["lang"] = .string(lang.string.flatMap { languages.contains($0) ? $0 : nil } ?? "en") }
+        if p["place"] != nil || p["place_deck"] != nil {
+            let (place, placeDeck) = cleanPlace(p["place"] ?? entry["place"], p["place_deck"] ?? entry["place_deck"])
+            entry["place"] = .string(place)
+            entry["place_deck"] = .string(placeDeck)
+        }
+        guard entry != items[index] else { return }
+        items[index] = entry
+        var merged: [Object] = []
+        var seen: [[String]: Int] = [:]
+        for item in items {
+            let key = collectionKey(item)
+            if let at = seen[key] {
+                merged[at]["qty"] = .int((merged[at]["qty"]?.int ?? 0) + (item["qty"]?.int ?? 0))
+            } else {
+                seen[key] = merged.count
+                merged.append(item)
+            }
+        }
+        model["collection"] = .array(merged.filter { ($0["qty"]?.int ?? 0) > 0 }.map(JSONValue.object))
+    }
+
     /// What the server works out from the games: each deck's and opponent's record, the order of games,
     /// decks and opponents, the player names. Mirrors `appdata.snapshot` (and `recompute()` in `data.js`).
     static func recompute(_ model: inout Object) {
@@ -172,6 +245,13 @@ public enum Optimistic {
 
         let players = Set(opponents.compactMap { text($0["player"]) })
         model["players"] = .array(players.sorted { ($0.lowercased(), $0) < ($1.lowercased(), $1) }.map(JSONValue.string))
+
+        if let collection = model["collection"]?.array {  // `appdata.collection`: by name
+            let sorted = stableSorted(collection.compactMap(\.object)) {
+                ($0["name"]?.string ?? "").lowercased() < ($1["name"]?.string ?? "").lowercased()
+            }
+            model["collection"] = .array(sorted.map(JSONValue.object))
+        }
     }
 
     // MARK: - Pieces, each named after the server function it mirrors
@@ -254,6 +334,53 @@ public enum Optimistic {
         let group = (deck["shelved"]?.bool == true ? 2.0 : 0) + (pinned ? 0 : 1)
         let pinRank: Double? = pinned ? deck["pin_rank"]?.int.map(Double.init) : nil
         return [group, pinRank == nil ? 0 : 1, pinRank ?? 0]
+    }
+
+    /// `appops._coll_key` (the PC's `collection._key`): one entry per name, printing, proxy, foil,
+    /// language and place; a deck place ignores the free text, and the text ignores case.
+    static func collectionKey(_ e: Object) -> [String] {
+        let deck = e["place_deck"]?.string ?? ""
+        return [(e["name"]?.string ?? "").lowercased(), e["scryfall_id"]?.string ?? "", String(e["proxy"]?.bool == true),
+                String(e["foil"]?.bool == true), e["lang"]?.string ?? "en", deck,
+                deck.isEmpty ? (e["place"]?.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased() : ""]
+    }
+
+    /// `appops._place` (the PC's `collection.clean_place`): the text with its spaces tidied, at most 80
+    /// characters, and a deck slug or "".
+    static func cleanPlace(_ place: JSONValue?, _ deck: JSONValue?) -> (String, String) {
+        let words = (place?.string ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let slug = matching(deck?.string, isDeckSlug) ?? ""
+        return (String(words.prefix(80)), slug)
+    }
+
+    /// `LANGS`: the languages the server keeps; any other becomes English.
+    static let languages: Set = ["en", "de", "fr", "it", "es", "pt", "ja", "ko", "ru", "zhs", "zht", "ph"]
+
+    /// The trimmed value when it passes `check`, like `appops._match_str`.
+    static func matching(_ value: String?, _ check: (String) -> Bool) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty, check(value) else { return nil }
+        return value
+    }
+
+    // The server's patterns (`SET_RE`, `NUMBER_RE`, `UUID_RE`, `PRICE_RE`, `ID_RE`, `PLACE_DECK_RE`).
+    static func isSetCode(_ s: String) -> Bool { (2...8).contains(s.count) && s.allSatisfy { $0.isASCII && ($0.isLowercase || $0.isNumber) } }
+    static func isCollectorNumber(_ s: String) -> Bool {
+        (1...12).contains(s.count) && s.allSatisfy { $0.isLetter || $0.isNumber || "_★†-".contains($0) }
+    }
+    static func isScryfallID(_ s: String) -> Bool {
+        let groups = s.split(separator: "-", omittingEmptySubsequences: false)
+        return groups.map(\.count) == [8, 4, 4, 4, 12] && s.allSatisfy { $0 == "-" || ($0.isHexDigit && !$0.isUppercase) }
+    }
+    static func isPrice(_ s: String) -> Bool {
+        let parts = s.split(separator: ".", omittingEmptySubsequences: false)
+        guard (1...2).contains(parts.count), (1...6).contains(parts[0].count), parts.allSatisfy({ $0.allSatisfy { $0.isASCII && $0.isNumber } }) else { return false }
+        return parts.count == 1 || (1...2).contains(parts[1].count)
+    }
+    static func isID(_ s: String) -> Bool { (1...40).contains(s.count) && s.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_" || $0 == "-") } }
+    static func isDeckSlug(_ s: String) -> Bool {
+        guard let first = s.first, (1...81).contains(s.count) else { return false }
+        func ok(_ c: Character) -> Bool { c.isASCII && (c.isLowercase || c.isNumber) }
+        return ok(first) && s.allSatisfy { ok($0) || $0 == "-" }
     }
 
     static func lastAndUpdated(_ item: Object) -> [String] {
