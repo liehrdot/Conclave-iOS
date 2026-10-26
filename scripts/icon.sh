@@ -1,5 +1,6 @@
 #!/bin/bash
-# Shows the app icon the way iOS draws it, without a Mac at hand. CI runs it on every pull request.
+# Shows the app icon the way iOS draws it, without a Mac at hand. CI runs it when the icon
+# changes, or when started by hand (Actions › CI › Run workflow).
 # Usage: scripts/icon.sh <path to Conclave.app> <output folder>
 #
 # 1. Icon Composer's command line tool (ictool, inside Xcode) renders App/AppIcon.icon with Liquid

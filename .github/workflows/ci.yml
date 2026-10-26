@@ -84,8 +84,31 @@ jobs:
           path: screenshots
           retention-days: 14
 
-  # the app icon as iOS draws it, in every appearance, and on the Home Screen: the "icon" artifact
+  # did this change touch the app icon? A quick look on Linux, so the Mac job below only starts when it did
+  icon-changed:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        # a base git can't compare against (a new branch) counts as changed
+        run: |
+          if git diff --quiet "$BASE" HEAD -- App/AppIcon.icon scripts/icon.sh; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # the app icon as iOS draws it, in every appearance, and on the Home Screen: the "icon" artifact.
+  # Only when the icon changed or when started by hand: it boots a simulator, which takes most of its 10+ Mac minutes
   icon:
+    needs: icon-changed
+    if: github.event_name == 'workflow_dispatch' || needs.icon-changed.outputs.changed == 'true'
     runs-on: macos-26
     timeout-minutes: 30
     steps:

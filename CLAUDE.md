@@ -19,7 +19,7 @@ xcodegen generate                                  # Conclave.xcodeproj from pro
 
 Nobody here has a Mac: the app is built in GitHub Actions (`.github/workflows/ci.yml`), which also
 keeps the unsigned `Conclave.ipa` as the run's artifact. Its `screenshots` job (only when started by hand: Actions › CI › Run workflow; Flo tests on the iPhone) runs `scripts/screenshots.sh`: the app in the
-simulator, iPhone and iPad, light and dark, as the run's `screenshots` artifact; the app opens the screen named
+simulator, iPhone and iPad, light and dark, as the run's `screenshots` artifact (the `icon` job, `scripts/icon.sh`, runs when `App/AppIcon.icon` or the script changed, or by hand); the app opens the screen named
 in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the script). `docs/sideload.md` says how it gets onto a phone.
 
 ## Layout
