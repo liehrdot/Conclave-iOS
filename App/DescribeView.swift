@@ -55,14 +55,13 @@ struct DescribeSearch: View {
                     Task { await find() }
                 } label: {
                     Group {
-                        if busy { ProgressView().tint(.black) } else { Label("Find Cards", systemImage: "sparkle.magnifyingglass") }
+                        if busy { ProgressView().tint(Color("OnAccent")) } else { Label("Find Cards", systemImage: "sparkle.magnifyingglass") }
                     }
                     .font(.headline)
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Color("OnAccent"))
                     .frame(maxWidth: .infinity, minHeight: 34)
                 }
                 .buttonStyle(.glassProminent)
-                .tint(Color("Neon"))
                 .disabled(!ready || model.inDemo)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())

@@ -46,11 +46,10 @@ struct WelcomeView: View {
                 } label: {
                     Label("Scan QR Code", systemImage: "qrcode.viewfinder")
                         .font(.headline)
-                        .foregroundStyle(.black) // black on the neon, like the PWA: white on it is unreadable
+                        .foregroundStyle(Color("OnAccent")) // white on the dark green, black on the neon
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Color("Neon"))
                 .controlSize(.large)
 
                 Button("Enter Code") {

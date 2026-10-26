@@ -213,12 +213,11 @@ struct DeckView: View {
                 } label: {
                     Label("Log a Game", systemImage: "plus")
                         .font(.headline)
-                        .foregroundStyle(.black) // black on the neon, like the PWA
+                        .foregroundStyle(Color("OnAccent")) // white on the dark green, black on the neon
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
                 }
-                .buttonStyle(.glassProminent)
-                .tint(Color("Neon"))
+                .buttonStyle(.glassProminent) // the app's accent colour as its background
                 Button {
                     showingRule0 = true
                 } label: {

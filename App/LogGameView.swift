@@ -380,11 +380,12 @@ private enum Medal {
         }
     }
 
-    /// For text in the metal's colour (the "Winner" label): darker in light mode to be readable.
+    /// For text in the metal's colour (the "Winner" label): darker in light mode, at least 4.5:1 on the light
+    /// backgrounds (HIG, Accessibility).
     var text: Color {
         switch self {
-        case .gold: Color(light: 0x9A7414, dark: 0xE3C46A)
-        case .silver: Color(light: 0x6B737C, dark: 0xC9CED6)
+        case .gold: Color(light: 0x7A5C0E, dark: 0xE3C46A)
+        case .silver: Color(light: 0x5F666E, dark: 0xC9CED6)
         case .bronze: Color(light: 0x8F5A2E, dark: 0xD49A6A)
         }
     }

@@ -90,12 +90,12 @@ struct Chip: View {
         .background(.regularMaterial, in: .capsule)
     }
 
-    /// Bracket 1 blue, 2 green, 3 yellow, 4 orange, 5 red: the dot's colour. System colours, so they
+    /// Bracket 1 blue, 2 teal, 3 yellow, 4 orange, 5 red: the dot's colour. System colours, so they
     /// adapt to dark mode and Increase Contrast (HIG, Color).
     static func tone(_ bracket: Int) -> Color {
         switch bracket {
         case ...1: .blue
-        case 2: .green
+        case 2: .teal // not green: green is the accent, which means "you can tap this" (HIG, Color)
         case 3: .yellow
         case 4: .orange
         default: .red

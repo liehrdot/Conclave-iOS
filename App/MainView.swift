@@ -324,7 +324,9 @@ struct AboutView: View {
     }
 }
 
-/// A deck's or opponent's colour identity as small mana-coloured dots, like the cards' pips.
+/// A deck's or opponent's colour identity as small mana-coloured dots, like the cards' pips. These are Magic's own
+/// colours, content like the card art, so they stay fixed rather than system colours; a hairline keeps the white and
+/// black ones visible, and VoiceOver reads the colours by name.
 struct ColorPips: View {
     let colors: String
 
