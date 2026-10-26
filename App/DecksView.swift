@@ -183,7 +183,7 @@ struct DeckView: View {
                     .accessibilityHint("Shows the card")
                 }
             }
-            HStack(spacing: 8) {
+            AdaptiveStack {
                 ColorPips(colors: deck.colors)
                 if let bracket = deck.bracket { Chip.bracket(bracket) }
                 if deck.proxy { Chip(text: "Proxy") }
@@ -194,7 +194,7 @@ struct DeckView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            HStack(spacing: 8) {
+            AdaptiveStack {
                 StatPill(label: "Games", value: "\(deck.record.games)")
                 StatPill(label: "Won – lost", value: deck.record.games == 0 ? "–"
                          : recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
@@ -206,7 +206,7 @@ struct DeckView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            HStack(spacing: 8) {
+            AdaptiveStack {
                 // the one prominent button on the screen, coloured on its background (HIG Buttons and Color)
                 Button {
                     loggingGame = true

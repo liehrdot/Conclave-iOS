@@ -192,23 +192,27 @@ private struct FaceText: View {
 }
 
 /// The card picture, turned in 3D to its back for double-faced cards (tap it or "Turn Over"), with a
-/// moving holo sheen for a foil copy (still when Reduce Motion is on).
+/// moving holo sheen for a foil copy. With Reduce Motion the sides cross-fade and the sheen stands still.
 struct CardPicture: View {
     let front: URL?
     let back: URL?
     let foil: Bool
     @Binding var turned: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// How far the card is turned: no turn at all with Reduce Motion, where only the opacity changes.
+    private var angle: Double { reduceMotion ? 0 : turned ? 180 : 0 }
 
     var body: some View {
         ZStack {
             face(front).opacity(turned ? 0 : 1)
             if let back {
                 face(back)
-                    .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                    .rotation3DEffect(.degrees(reduceMotion ? 0 : 180), axis: (x: 0, y: 1, z: 0))
                     .opacity(turned ? 1 : 0)
             }
         }
-        .rotation3DEffect(.degrees(turned ? 180 : 0), axis: (x: 0, y: 1, z: 0), perspective: 0.4)
+        .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.4)
         .animation(.smooth(duration: 0.5), value: turned)
         .onTapGesture { if back != nil { turned.toggle() } }
         .accessibilityAddTraits(back != nil ? .isButton : [])

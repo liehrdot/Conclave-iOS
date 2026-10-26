@@ -103,6 +103,10 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `CardArt` = a card's art crop from `CardLibrary` + `CardImages`; the Decks tab prefetches all commanders at once.
   Shared: `TileGrid` (tiles over a backdrop, columns on the iPad) + `ArtTile` for the Decks
   and Opponents tabs; the opponent screen, Rule 0 and the card sheet sit over their commander's or card's art too.
+  Accessibility settings (HIG, Typography and Accessibility): names wrap instead of being cut off, `AdaptiveStack` turns
+  a row (header chips, `StatPill`s, the deck's two buttons, a tile's facts, a place row's numbers) into a column at the
+  accessibility text sizes, the outbox accessory caps its text at xxLarge like the tab bar, `ArtBackdrop` covers the art
+  more with Reduce Transparency or Increase Contrast, and with Reduce Motion a card's sides cross-fade instead of turning.
   Settings stays a plain iOS form on purpose (it's a utility sheet, like the iPhone's own Settings).
   Colours (HIG, Color): `AccentColor` = dark green in light mode, neon in dark, each with an Increase Contrast variant; it marks
   what you can tap (text, icons, picked choices) and is the background of the one prominent button per screen

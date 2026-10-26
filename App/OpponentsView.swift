@@ -191,7 +191,7 @@ struct OpponentView: View {
                     .accessibilityHint("Shows the card")
                 }
             }
-            HStack(spacing: 8) {
+            AdaptiveStack {
                 ColorPips(colors: opponent.colors ?? "")
                 if let bracket = opponent.bracket { Chip.bracket(bracket) }
                 if let player = opponent.player, !player.isEmpty {
@@ -200,7 +200,7 @@ struct OpponentView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            HStack(spacing: 8) {
+            AdaptiveStack {
                 StatPill(label: "Games", value: "\(opponent.record.games)")
                 StatPill(label: "Won – lost", value: opponent.record.games == 0 ? "–"
                          : recordText(wins: opponent.record.wins, losses: opponent.record.losses, draws: opponent.record.draws))
