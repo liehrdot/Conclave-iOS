@@ -58,13 +58,16 @@ jobs:
   # how the screens look, light and dark, iPhone and iPad: the PR's "Artifacts" hold the pictures
   screenshots:
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Use Xcode ${{ env.XCODE }}
         run: |
           sudo xcode-select -s "/Applications/Xcode_${XCODE}.app"
           xcodebuild -version
+      # booting takes minutes: start it now, so it runs while the app builds
+      - name: Boot the simulators
+        run: scripts/screenshots.sh boot
       - run: brew install xcodegen
       - run: xcodegen generate
       # the simulator runs unsigned apps, so no signing here either
