@@ -2,7 +2,7 @@ import ConclaveCore
 import SwiftUI
 
 /// The Decks tab: pinned decks first, paused ones last, in the read model's order (the PC's). Each deck
-/// is a glass panel with its commander's art; the first deck's art lies blurred behind them all.
+/// is a panel with its commander's art; the first deck's art lies blurred behind them all.
 struct DecksView: View {
     let device: Device
     @Environment(AppModel.self) private var model
@@ -56,7 +56,7 @@ struct DeckGroup: Identifiable {
     let decks: [Deck]
 }
 
-/// The decks as glass tiles in their groups, over the first deck's art.
+/// The decks as tiles in their groups, over the first deck's art.
 struct DeckTiles: View {
     let groups: [DeckGroup]
 
@@ -69,7 +69,7 @@ struct DeckTiles: View {
                             .buttonStyle(.plain)
                     }
                 } header: {
-                    GlassHeader(group.title)
+                    SectionTitle(group.title)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 12)
                 }
@@ -83,7 +83,7 @@ struct DeckTile: View {
     let deck: Deck
 
     var body: some View {
-        GlassTile(art: deck.commanders.first ?? "", title: deck.name,
+        ArtTile(art: deck.commanders.first ?? "", title: deck.name,
                   subtitle: deck.commanders.joined(separator: " + "), warning: deck.legal == false ? "Not legal" : nil) {
             ColorPips(colors: deck.colors)
             if let level = deck.shownLevel { Text(level) }
@@ -122,21 +122,21 @@ struct DeckView: View {
 
             ForEach(categories) { category in
                 Section {
-                    ForEach(category.cards, id: \.self) { row($0).glassRow() }
+                    ForEach(category.cards, id: \.self) { row($0).materialRow() }
                 } header: {
-                    GlassHeader("\(category.name) · \(category.count)")
+                    SectionTitle("\(category.name) · \(category.count)")
                 }
             }
 
             if !shownMaybe.isEmpty {
                 Section {
-                    ForEach(shownMaybe, id: \.self) { row($0).glassRow() }
+                    ForEach(shownMaybe, id: \.self) { row($0).materialRow() }
                 } header: {
-                    GlassHeader("Maybe")
+                    SectionTitle("Maybe")
                 }
             }
         }
-        .glassList(over: deck.commanders.first ?? "")
+        .artList(over: deck.commanders.first ?? "")
         .searchable(text: $query, prompt: "Cards in this deck")
         .navigationTitle(deck.name)
         .navigationBarTitleDisplayMode(.inline) // the header shows the name big
@@ -157,7 +157,7 @@ struct DeckView: View {
     private var shownCards: [Deck.Card] { deck.cards.filter(matches) }
     private var shownMaybe: [Deck.Card] { deck.maybe.filter(matches) }
 
-    /// The name, the commanders to tap, the facts as glass pills and Rule 0: hidden while searching,
+    /// The name, the commanders to tap, the facts as pills and Rule 0: hidden while searching,
     /// so the matches come first.
     private var summary: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -185,30 +185,29 @@ struct DeckView: View {
             }
             HStack(spacing: 8) {
                 ColorPips(colors: deck.colors)
-                if let bracket = deck.bracket { Chip(text: "Bracket \(bracket)") }
+                if let bracket = deck.bracket { Chip.bracket(bracket) }
                 if deck.proxy { Chip(text: "Proxy") }
-                if deck.legal == false { Chip(text: "Not legal") }
+                if deck.legal == false { Chip(text: "Not legal", kind: .problem) }
             }
             if let description = deck.description, !description.isEmpty {
                 Text(description)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            GlassEffectContainer(spacing: 8) {
-                HStack(spacing: 8) {
-                    StatPill(label: "Games", value: "\(deck.record.games)")
-                    StatPill(label: "Won – lost", value: deck.record.games == 0 ? "–"
-                             : recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
-                    StatPill(label: "Speed", value: deck.speed?.shownLabel ?? "–")
-                }
+            HStack(spacing: 8) {
+                StatPill(label: "Games", value: "\(deck.record.games)")
+                StatPill(label: "Won – lost", value: deck.record.games == 0 ? "–"
+                         : recordText(wins: deck.record.wins, losses: deck.record.losses, draws: deck.record.draws))
+                StatPill(label: "Speed", value: deck.speed?.shownLabel ?? "–")
             }
+            .fixedSize(horizontal: false, vertical: true) // the panels share the tallest one's height
             if let last = ReadModel.date(deck.record.last) {
                 Text("Last played \(last, format: .relative(presentation: .named))")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
             HStack(spacing: 8) {
-                // the one green button on the screen: what the app is for at the table
+                // the one prominent button on the screen, coloured on its background (HIG Buttons and Color)
                 Button {
                     loggingGame = true
                 } label: {
@@ -327,7 +326,7 @@ struct Rule0View: View {
                     if row.flag { Color.orange.opacity(0.15) }
                 })
             }
-            .glassList(over: deck.commanders.first ?? "")
+            .artList(over: deck.commanders.first ?? "")
             .navigationTitle("Rule 0")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

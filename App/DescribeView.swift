@@ -38,11 +38,11 @@ struct DescribeSearch: View {
                     .focused($focused)
                     .submitLabel(.search)
                     .onSubmit { Task { await find() } }
-                    .glassRow()
+                    .materialRow()
                 ChoiceChips(title: "Colors (optional)", choices: Self.colorChoices, picked: colors) { toggle($0, in: &colors) }
-                    .glassRow()
+                    .materialRow()
                 ChoiceChips(title: "Card type (optional)", choices: Self.typeChoices, picked: types) { toggle($0, in: &types) }
-                    .glassRow()
+                    .materialRow()
             } footer: {
                 if model.inDemo {
                     Text("Describing needs your own sync server, so it doesn't work in the demo.")
@@ -72,10 +72,10 @@ struct DescribeSearch: View {
                 Section {
                     Label(problem, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
-                        .glassRow()
+                        .materialRow()
                     if needsSetup {
                         Button("Set Up Search by Description") { settingUp = true }
-                            .glassRow()
+                            .materialRow()
                     }
                 }
             }
@@ -86,7 +86,7 @@ struct DescribeSearch: View {
                     Text(query)
                         .font(.footnote.monospaced())
                         .textSelection(.enabled)
-                        .glassRow()
+                        .materialRow()
                     ForEach(cards, id: \.name) { card in
                         SearchRow(name: card.name, type: card.faces.map(\.typeLine).joined(separator: " // ")) {
                             shown = DeckView.ShownCard(name: card.name)
@@ -95,16 +95,16 @@ struct DescribeSearch: View {
                     if let next {
                         Button("Show More") { Task { await load(page: next) } }
                             .disabled(busy)
-                            .glassRow()
+                            .materialRow()
                     }
                 } header: {
-                    GlassHeader(cards.isEmpty ? "No Cards Found" : total == 1 ? "1 Card" : "\(total) Cards")
+                    SectionTitle(cards.isEmpty ? "No Cards Found" : total == 1 ? "1 Card" : "\(total) Cards")
                 } footer: {
                     if broadened { Text("Nothing matched exactly, so this is a broader search.") }
                 }
             }
         }
-        .glassList(over: cards.first?.name ?? "")
+        .artList(over: cards.first?.name ?? "")
         .scrollDismissesKeyboard(.interactively)
         .sheet(item: $shown) { shown in CardSheet(name: shown.name, copies: []) }
         .sheet(isPresented: $settingUp) {
