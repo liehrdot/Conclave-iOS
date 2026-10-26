@@ -33,6 +33,18 @@ public struct NameHit: Equatable, Sendable, Identifiable {
     /// The card in English, when the search already brought it.
     public var card: Card?
 
+    init(name: String, german: String?, type: String, card: Card?) {
+        self.name = name
+        self.german = german
+        self.type = type
+        self.card = card
+    }
+
+    /// A card a search found (English): its name and type line, faces joined by " // ".
+    public init(_ card: Card) {
+        self.init(name: card.name, german: nil, type: card.faces.map(\.typeLine).joined(separator: " // "), card: card)
+    }
+
     /// The card named exactly as typed first (English or German), then cards that only carry it as their
     /// front face ("Rampant Growth" before "Studious First-Year // Rampant Growth"); otherwise the order
     /// stays. Mirrors `exactFirst()` in `scry.js`.

@@ -31,6 +31,14 @@ import Testing
         #expect(request.url?.absoluteString.contains("%2B1/%2B1") == true)
     }
 
+    @Test func aFoundCardIsAHitWithItsFacesTypes() async throws {
+        let fake = FakeTransport(.init(body: Self.page(Self.studious)))
+        let hit = NameHit(try #require(try await Scryfall(transport: fake, gap: .zero).search("t:bear").cards.first))
+        #expect(hit.name == "Studious First-Year // Rampant Growth")
+        #expect(hit.type == "Creature — Bear Wizard // Sorcery")
+        #expect(hit.german == nil && hit.card != nil)
+    }
+
     @Test func noHitsIsAnEmptyPageAndABrokenQueryAnError() async throws {
         let none = try await Scryfall(transport: FakeTransport(.init(status: 404)), gap: .zero).search("t:nothing")
         #expect(none == SearchPage(cards: [], total: 0, next: nil))

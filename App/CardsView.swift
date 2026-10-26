@@ -163,7 +163,7 @@ struct CardsView: View {
                 let page = try await model.cards.scryfall.search(query, multilingual: true)
                 guard wanted == current else { return }
                 await model.cards.remember(page.cards)
-                hits = page.cards.map(Self.hit)
+                hits = page.cards.map(NameHit.init)
                 next = page.next
             } else {
                 let found = try await model.cards.scryfall.find(name: wanted.text)
@@ -190,15 +190,11 @@ struct CardsView: View {
         do {
             let found = try await model.cards.scryfall.search(query, page: page, multilingual: true)
             await model.cards.remember(found.cards)
-            hits += found.cards.map(Self.hit).filter { hit in !hits.contains { $0.name == hit.name } }
+            hits += found.cards.map(NameHit.init).filter { hit in !hits.contains { $0.name == hit.name } }
             next = found.next
         } catch {
             problem = Self.message(for: error)
         }
-    }
-
-    private static func hit(_ card: Card) -> NameHit {
-        NameHit(name: card.name, german: nil, type: card.faces.map(\.typeLine).joined(separator: " // "), card: card)
     }
 
     private static func message(for error: any Error) -> String {
