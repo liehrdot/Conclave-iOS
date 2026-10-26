@@ -71,11 +71,21 @@ private struct OutboxStatus: View {
                     Label(saved.text, systemImage: "checkmark.circle.fill")
                         .labelStyle(Tinted(color: Color.accentColor))
                     Spacer(minLength: 8)
-                    Button { Task { await model.undo(saved.op) } } label: {
-                        Text("Undo").font(.body.weight(.semibold)).padding(.horizontal, 10).frame(minHeight: 44)
+                    if inAccessory {
+                        // the accessory is barely taller than a 44 pt button, so a filled button fills it edge to
+                        // edge; plain accent text instead, like the Music player's controls, with the same 44 pt to hit
+                        Button { Task { await model.undo(saved.op) } } label: {
+                            Text("Undo").font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
+                                .padding(.horizontal, 8).frame(minHeight: 44).contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Button { Task { await model.undo(saved.op) } } label: {
+                            Text("Undo").font(.body.weight(.semibold)).padding(.horizontal, 10).frame(minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
                     }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
                 }
                 .task(id: saved.id) {
                     try? await Task.sleep(for: Self.toastFor)
@@ -120,8 +130,9 @@ private struct OutboxStatus: View {
     private func pill<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         if inAccessory {
             HStack(spacing: 12, content: content)
-                .font(.body)
-                .lineLimit(1)
+                // two lines of the smaller text fit the accessory's height, so a long deck name isn't cut off
+                .font(.subheadline)
+                .lineLimit(2)
                 .padding(.leading, 16)
                 .padding(.trailing, 8)
                 .frame(maxHeight: .infinity)
