@@ -72,6 +72,11 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `Scryfall.printing(set:number:lang:)`, `printing(named:set:)` (fuzzy) and `printings(of:anyLanguage:)` mirror `scry.js`
   `printing()`/`named()`/`prints()`; `CollectionAddDraft` = the add sheet's choices (foil only as far as the printing was made
   that way, 1…99 copies) and its `collection.add` payload (`addSheet()` + `entryFacts()` in `scan.js`).
+  `CardReader.swift` = the scanner's rules, ported from `scan.js`: `ReadLine` (a read line placed in the card frame, 0…1),
+  `CardFrame` (the 63 × 88 cutout), `SetLine.parse` (`parseLine()`), `CardRead` (name candidates from the top, the set line
+  from the bottom, `cleanName()`), `CardLookup` (Scryfall, or a fake in tests), `actor CardReader` (`identify()`: set line
+  checked against the name, else fuzzy name in that set first, else a printed German name and its longest word; each text
+  asked once), `ScanSteadiness` (a doubtful hit must come twice, the card just added waits for an empty frame).
   `GameDraft` = the "Log a Game" form's state and rules (`forms.js` game sheet: rematch within 8 h, `setResult`, `setPlace` fills
   the last place and decides win/loss, `payload` = `game.add`). `ReadModelCache.loadJSON()` = the raw saved copy for `Optimistic`.
   `PendingOp.summary(in:)` (`OpSummary`) = a change in a few words ("Loss with Meren") for the toast and the refused list.
@@ -92,9 +97,14 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `collectionFilters` as JSON; colours and types prefetch the collection's cards into `CardLibrary` once; `FiltersRow` above the
   list says them in words, with Clear) › `CollectionCardView`: a section per entry with copies (a `Stepper` that saves once the taps pause
   for 700 ms), Proxy and Foil toggles, Place › `PlacePicker`, and "Remove from Collection" without a question, since the toast
-  has "Undo"; "Add Another" there, "Add Card" (top left) › `AddByNameView` and "Add to Collection" in `CardSheet` open
+  has "Undo"; "Add Another" there, "Add Card" (top left, a menu: "Scan Cards" › `CardScanView`, "Type a Name" › `AddByNameView`) and "Add to Collection" in `CardSheet` open
   `AddToCollectionView`/`AddToCollectionForm`: printing with "Other Printing", Original/Proxy, Foil, language (swaps to that
-  language's printing), place, copies; Original/Proxy and the place are remembered in `AppStorage` `addProxy`/`addPlace`/`addDeck`)
+  language's printing), place, copies; Original/Proxy and the place are remembered in `AppStorage` `addProxy`/`addPlace`/`addDeck`; "Scan Cards" on the tab › `CardScanView` (full screen, `App/CardScanView.swift`): VisionKit's
+  `DataScannerViewController` reading text (`TextScanner`, own boxes instead of Apple's highlights, reads inside the
+  `CardFrame` cutout), each change › `ReadLine`s › `CardRead` › `CardReader.identify` (one at a time, only the newest read
+  waits) › `ScanSteadiness` › the add sheet with the found printing; `ScanOverlay` dims around the frame, boxes every read
+  line, marks and labels the name and the set line, the frame snaps green on a hit (fades with Reduce Motion), a glass status
+  pill says it in words, success haptic, VoiceOver announcement; "Type a Name" › `AddByNameView`)
   and the search tab Cards (`CardsView`, `Tab(role: .search)`:
   `.searchable`, `find(name:)` 300 ms after typing pauses, rows with `CardArt`, the last 12 opened in `AppStorage` `recentCards`, tap › `CardSheet`; "Filters" in the top bar › `FilterSheet` (with a filter the name search is one paged `Scryfall.search`, without a name
   the most played cards that fit; `FiltersRow` (shared with the Collection tab: a plain line, words in the label colour) above the results); a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
