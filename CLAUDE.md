@@ -64,7 +64,7 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   `dismiss(op)` drops a refused op, `waiting`/`refused` for the status line, `send()` flushes and refreshes after a batch, `refresh()` on opening, on
   return and every minute via `Connection.refresh`; a 401 leads back to the welcome screen), `RootView` (welcome or
   `MainView`), `WelcomeView` → `ScanView` (VisionKit QR) or `EnterCodeView`; `MainView` = tabs Decks (`DecksView` →
-  `DeckView` → `Rule0View` sheet, `LogGameView` sheet ("Log a Game": result, opponents via `OpponentPicker`,
+  `DeckView` → `Rule0View` sheet, `LogGameView` sheet ("Log a Game": result as a segmented control, opponents via `OpponentPicker`,
   places, "More Details"), `CardSheet` per card: the own copy's printing (foil sheen, several copies to pick),
   else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`: tag chips "What It Does" save on a tap, "Add Note" › `AddNoteView`,
   "Edit" › `EditOpponentView` (name, player, bracket; not the commander yet)) and the search tab Cards (`CardsView`, `Tab(role: .search)`:

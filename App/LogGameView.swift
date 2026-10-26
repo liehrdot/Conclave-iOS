@@ -27,8 +27,7 @@ struct LogGameView: View {
             Form {
                 Section {
                     ResultPicker(result: draft.result, labels: options.results) { draft.setResult($0) }
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
+                        .materialRow()
                 }
 
                 Section {
@@ -141,38 +140,24 @@ struct LogGameView: View {
     }
 }
 
-/// Won, Lost, Draw as three big buttons: the one answer every game needs.
+/// Won, Lost, Draw: the one answer every game needs, as a segmented control, Apple's control for "a single choice
+/// from among a set of options" that shows its selection (HIG, Segmented controls). Text only, since a segmented
+/// control shouldn't mix text and symbols; extra large, so it stays the first thing you tap.
 private struct ResultPicker: View {
     let result: String?
     let labels: [String: String]
     let pick: (String) -> Void
 
-    var body: some View {
-        GlassEffectContainer(spacing: 8) {
-            HStack(spacing: 8) {
-                button("win", fallback: "Won", symbol: "trophy")
-                button("loss", fallback: "Lost", symbol: "xmark")
-                button("draw", fallback: "Draw", symbol: "equal")
-            }
-        }
-    }
+    private static let choices = [("win", "Won"), ("loss", "Lost"), ("draw", "Draw")]
 
-    private func button(_ key: String, fallback: String, symbol: String) -> some View {
-        let picked = result == key
-        return Button {
-            pick(key)
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: symbol).font(.title2).frame(height: 30) // the same height for every symbol, so the three line up
-                Text(labels[key] ?? fallback).font(.headline)
+    var body: some View {
+        Picker("Result", selection: Binding(get: { result }, set: { if let key = $0 { pick(key) } })) {
+            ForEach(Self.choices, id: \.0) { key, fallback in
+                Text(labels[key] ?? fallback).tag(Optional(key))
             }
-            .foregroundStyle(picked ? Color.accentColor : .primary)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
         }
-        .buttonStyle(.plain)
-        .glassEffect(picked ? .regular.tint(Picked.fill).interactive() : .regular.interactive(), in: .rect(cornerRadius: 18))
-        .accessibilityAddTraits(picked ? .isSelected : [])
+        .pickerStyle(.segmented)
+        .controlSize(.extraLarge)
     }
 }
 
