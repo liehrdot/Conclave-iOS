@@ -47,7 +47,7 @@ struct CardsView: View {
                 case .describe: DescribeSearch()
                 }
             }
-            .navigationTitle("Cards")
+            // no title: the Name | Describe switch says what the screen is, and a title would sit beside it
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: mode) {
                 if AppModel.startScreen == nil { UserDefaults.standard.set(mode.rawValue, forKey: "cardMode") }
@@ -63,6 +63,7 @@ struct CardsView: View {
                     .pickerStyle(.segmented)
                     .fixedSize()
                 }
+                .sharedBackgroundVisibility(.hidden) // the switch is its own glass; iOS would add a second one
                 ToolbarItem(placement: .topBarTrailing) { SettingsButton(device: device) }
                 if mode == .name {
                     ToolbarItem(placement: .topBarTrailing) {
