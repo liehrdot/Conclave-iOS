@@ -26,7 +26,32 @@ permissions:
   security-events: write
 
 jobs:
+  # what did this pull request touch? The Swift scan takes 15 to 20 Mac minutes, so on a pull request it only runs
+  # when there is Swift to scan, and the workflow scan only when a workflow changed. Pushes to main, the weekly
+  # run and runs started by hand always scan both. A skipped job counts as passed for the required checks.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      swift: ${{ steps.diff.outputs.swift }}
+      actions: ${{ steps.diff.outputs.actions }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        # a base git can't compare against counts as changed
+        run: |
+          changed() { if git diff --quiet "$BASE" HEAD -- "$@"; then echo false; else echo true; fi; }
+          echo "swift=$(changed App Packages project.yml .github/codeql .github/workflows/codeql.yml)" >> "$GITHUB_OUTPUT"
+          echo "actions=$(changed .github)" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
   swift:
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.swift == 'true'
     runs-on: macos-26
     timeout-minutes: 45
     steps:
@@ -54,6 +79,8 @@ jobs:
           category: /language:swift
 
   actions:
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.actions == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
