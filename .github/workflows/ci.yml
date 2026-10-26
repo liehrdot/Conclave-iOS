@@ -57,6 +57,9 @@ jobs:
 
   # how the screens look, light and dark, iPhone and iPad: the PR's "Artifacts" hold the pictures
   screenshots:
+    # only when started by hand (Actions › CI › Run workflow): Flo tests on the iPhone itself, and a run costs
+    # about 30 Mac minutes, most of it booting a fresh simulator (#29)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     timeout-minutes: 40
     steps:
