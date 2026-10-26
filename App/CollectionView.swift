@@ -36,10 +36,14 @@ struct CollectionView: View {
                     Button("Sort and Filter", systemImage: filters.isEmpty && sort == .name
                            ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill") { filtering = true }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add a Card", systemImage: "plus") { adding = true }
-                }
                 ToolbarItem(placement: .topBarTrailing) { SettingsButton(device: device) }
+                // adding gets its own side, with words, so it isn't one more icon among filters and settings
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { adding = true } label: {
+                        Label("Add Card", systemImage: "plus")
+                            .labelStyle(.titleAndIcon)
+                    }
+                }
                 if model.inDemo {
                     ToolbarItem(placement: .topBarLeading) { DemoBadge(device: device) }
                 }
