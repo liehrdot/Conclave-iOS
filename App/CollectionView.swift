@@ -209,7 +209,7 @@ private struct EntrySection: View {
                     .foregroundStyle(.secondary)
                     .materialRow()
             }
-            Stepper(value: Binding(get: { copies ?? entry.qty }, set: change), in: 1...CollectionEdit.maxCopies) {
+            Stepper(value: Binding(get: { copies ?? entry.qty }, set: { change($0) }), in: 1...CollectionEdit.maxCopies) {
                 LabeledContent("Copies", value: (copies ?? entry.qty).formatted())
             }
             .materialRow()
