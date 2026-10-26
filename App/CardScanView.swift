@@ -41,7 +41,12 @@ struct CardScanView: View {
                     if allowed == false || !DataScannerViewController.isSupported {
                         noCamera
                     } else if allowed == true {
-                        TextScanner(region: Self.region(around: frame), running: running) { read($0, frame: frame) }
+                        if running {
+                            // gone while a sheet is open: the camera turns off (its light too) instead of reading on
+                            // behind the sheet, and comes back when the sheet closes, like `pause()` in `scan.js`
+                            TextScanner(region: Self.region(around: frame), running: running) { read($0, frame: frame) }
+                                .transition(.opacity)
+                        }
                         ScanOverlay(frame: frame, seen: seen, status: status)
                     }
                 }
@@ -62,6 +67,11 @@ struct CardScanView: View {
                 allowed = await AVCaptureDevice.requestAccess(for: .video)
             }
             .sensoryFeedback(.success, trigger: hits)
+            .onChange(of: running) { _, now in
+                guard !now else { return }
+                seen = ScanSeen() // no boxes left over from before the pause
+                waiting = nil
+            }
             .sheet(item: $found, onDismiss: { if !added { status = .looking } }) { printing in
                 AddToCollectionView(name: printing.name, printing: printing) { card in
                     added = true
