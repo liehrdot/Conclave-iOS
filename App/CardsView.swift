@@ -230,12 +230,12 @@ struct SearchRow: View {
                 CardArt(name: name)
                     .frame(width: 52, height: 38)
                     .clipShape(.rect(cornerRadius: 6))
+                // the name wraps instead of being cut off (HIG, Typography); the smaller lines keep to two
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title ?? name).foregroundStyle(.primary)
-                    if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(.secondary) }
-                    if let type, !type.isEmpty { Text(type).font(.caption).foregroundStyle(.secondary) }
+                    if let subtitle { Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(2) }
+                    if let type, !type.isEmpty { Text(type).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
                 }
-                .lineLimit(1)
                 Spacer(minLength: 0)
             }
             .frame(minHeight: 44)

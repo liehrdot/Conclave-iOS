@@ -133,6 +133,9 @@ private struct OutboxStatus: View {
                 // two lines of the smaller text fit the accessory's height, so a long deck name isn't cut off
                 .font(.subheadline)
                 .lineLimit(2)
+                // the accessory's height is the system's, so like the tab bar it doesn't take the largest
+                // text sizes (HIG, Typography: not every piece of text has to grow)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)
                 .padding(.leading, 16)
                 .padding(.trailing, 8)
                 .frame(maxHeight: .infinity)
@@ -140,7 +143,7 @@ private struct OutboxStatus: View {
         } else {
             HStack(spacing: 12, content: content)
                 .font(.body)
-                .lineLimit(1)
+                .lineLimit(3)
                 // an even margin around the Undo button, so the pill is clearly bigger than it
                 .padding(.leading, 20)
                 .padding(.trailing, 10)

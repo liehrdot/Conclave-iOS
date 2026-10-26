@@ -37,7 +37,7 @@ struct LogGameView: View {
                                 .frame(width: 36, height: 36)
                                 .clipShape(.circle)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(name(of: seat)).lineLimit(1)
+                                Text(name(of: seat))
                                 if let player = opponent(of: seat)?.player, !player.isEmpty {
                                     Text(player).font(.caption).foregroundStyle(.secondary)
                                 }
@@ -168,26 +168,32 @@ private struct PlaceRow: View {
     let place: Int?
     let of: Int
     let pick: (Int) -> Void
+    @ScaledMetric(relativeTo: .subheadline) private var scaledButton: CGFloat = 34
+    /// Grows with the text, up to the size at which six places still fit across an iPhone.
+    private var button: CGFloat { min(scaledButton, 52) }
 
     var body: some View {
-        HStack(spacing: 10) {
-            CardArt(name: art)
-                .frame(width: 32, height: 32)
-                .clipShape(.circle)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name).lineLimit(1)
-                if place == 1 {
-                    Label("Winner", systemImage: "trophy.fill")
-                        .font(.caption)
-                        .foregroundStyle(Medal.gold.text)
+        // at the accessibility text sizes the numbers go under the name, which then has the whole width
+        AdaptiveStack(spacing: 10) {
+            HStack(spacing: 10) {
+                CardArt(name: art)
+                    .frame(width: 32, height: 32)
+                    .clipShape(.circle)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name)
+                    if place == 1 {
+                        Label("Winner", systemImage: "trophy.fill")
+                            .font(.caption)
+                            .foregroundStyle(Medal.gold.text)
+                    }
                 }
+                Spacer(minLength: 4)
             }
-            Spacer(minLength: 4)
             HStack(spacing: 4) {
                 ForEach(1...of, id: \.self) { number in
                     Button("\(number)") { pick(number) }
                         .font(.subheadline.weight(.semibold).monospacedDigit())
-                        .frame(width: 34, height: 34)
+                        .frame(width: button, height: button)
                         .foregroundStyle(place != number ? Color.primary : Medal.of(number) == nil ? Color.accentColor : Color.black)
                         .background(Circle().fill(place == number ? Medal.of(number)?.fill ?? Picked.fill : Color.secondary.opacity(0.15)))
                         .buttonStyle(.plain)
@@ -303,7 +309,7 @@ private struct OpponentPicker: View {
                                     .frame(width: 36, height: 36)
                                     .clipShape(.circle)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(opponent.title).lineLimit(1)
+                                    Text(opponent.title)
                                     if let player = opponent.player, !player.isEmpty {
                                         Text(player).font(.caption).foregroundStyle(.secondary)
                                     }

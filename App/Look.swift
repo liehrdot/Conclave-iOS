@@ -42,12 +42,31 @@ struct CardArt: View {
 /// so text on the material stays readable in light and dark mode.
 struct ArtBackdrop: View {
     let name: String
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         CardArt(name: name)
             .blur(radius: 50)
-            .overlay(.background.opacity(0.45))
+            // with Reduce Transparency or Increase Contrast only a hint of the art's colour stays, so the
+            // panels and text on top stand out clearly (HIG, Accessibility)
+            .overlay(.background.opacity(reduceTransparency || contrast == .increased ? 0.85 : 0.45))
             .ignoresSafeArea()
+    }
+}
+
+/// A row that turns into a column at the accessibility text sizes, so its items keep their words instead of
+/// squeezing them side by side (HIG, Typography: "consider using a stacked layout").
+struct AdaptiveStack<Content: View>: View {
+    var spacing: CGFloat = 8
+    @ViewBuilder let content: Content
+    @Environment(\.dynamicTypeSize) private var size
+
+    var body: some View {
+        let layout = size.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: spacing))
+            : AnyLayout(HStackLayout(spacing: spacing))
+        layout { content }
     }
 }
 
@@ -166,19 +185,17 @@ struct ArtTile<Facts: View>: View {
                 .frame(width: 64, height: 64)
                 .clipShape(.circle)
             VStack(alignment: .leading, spacing: 4) {
+                // wrapped, not cut off: a tile is the only place the whole name shows (HIG, Typography)
                 Text(title)
                     .font(.headline)
-                    .lineLimit(1)
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
-                HStack(spacing: 8) { facts }
+                AdaptiveStack { facts }
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
             Spacer(minLength: 0)
             if let warning {

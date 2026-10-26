@@ -10,6 +10,8 @@ struct WelcomeView: View {
     @State private var entering: Bool
     /// Why the phone isn't paired any more (signed off on the PC).
     let notice: String?
+    /// The big symbol grows with the text size, like the title under it.
+    @ScaledMetric(relativeTo: .largeTitle) private var iconSize: CGFloat = 56
 
     init(entering: Bool = false, scanning: Bool = false, notice: String? = nil) {
         self.notice = notice
@@ -22,7 +24,7 @@ struct WelcomeView: View {
             Spacer()
             VStack(spacing: 16) {
                 Image(systemName: "rectangle.stack.fill")
-                    .font(.system(size: 56))
+                    .font(.system(size: iconSize))
                     .foregroundStyle(.tint)
                     .accessibilityHidden(true)
                 Text("Conclave")
