@@ -7,7 +7,7 @@ struct MainView: View {
     let device: Device
     @State private var page: Page = switch AppModel.startScreen {
     case "opponents", "opponent", "edit-opponent": .opponents
-    case "cards": .cards
+    case "cards", "describe": .cards
     default: .decks
     }
 
@@ -153,11 +153,16 @@ struct SettingsView: View {
                         } label: {
                             ConnectionRow(device: device)
                         }
+                        NavigationLink {
+                            AISetupView()
+                        } label: {
+                            Label("Search by Description", systemImage: "sparkle.magnifyingglass")
+                        }
                         Link(destination: device.server.appending(path: "app/")) {
                             Label("Open the Web App", systemImage: "safari")
                         }
                     } footer: {
-                        Text("The web app has what this app can't do yet, like logging games and the collection.")
+                        Text("The web app has what this app can't do yet, like the collection.")
                     }
                 }
                 Section {
