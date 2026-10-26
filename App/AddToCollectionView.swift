@@ -232,10 +232,11 @@ private struct PrintingPicker: View {
                             .frame(width: 36, height: 50)
                             .clipShape(.rect(cornerRadius: 3))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(other.setName).foregroundStyle(.primary)
+                            // the system's label colours: a button in a list would tint all of its text green
+                            Text(other.setName).foregroundStyle(Color.primary)
                             Text("\(other.set.uppercased()) · #\(other.collectorNumber) · \(other.lang.uppercased()) · \(String(other.released.prefix(4)))")
                                 .font(.subheadline.monospaced())
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.secondary)
                         }
                         Spacer()
                         if other.id == printing.id {

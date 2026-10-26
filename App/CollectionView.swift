@@ -349,9 +349,10 @@ struct PlacePicker: View {
         Button(action: action) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).foregroundStyle(.primary)
+                    // the system's label colours: a button in a list would tint all of its text green
+                    Text(title).foregroundStyle(Color.primary)
                     if let detail, !detail.isEmpty {
-                        Text(detail).font(.subheadline).foregroundStyle(.secondary)
+                        Text(detail).font(.subheadline).foregroundStyle(Color.secondary)
                     }
                 }
                 Spacer()
