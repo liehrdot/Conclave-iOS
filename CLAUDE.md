@@ -21,6 +21,11 @@ Nobody here has a Mac: the app is built in GitHub Actions (`.github/workflows/ci
 keeps the unsigned `Conclave.ipa` as the run's artifact. Its `screenshots` job (only when started by hand: Actions › CI › Run workflow; Flo tests on the iPhone) runs `scripts/screenshots.sh`: the app in the
 simulator, iPhone and iPad, light and dark, as the run's `screenshots` artifact (the `icon` job, `scripts/icon.sh`, runs when `App/AppIcon.icon` or the script changed, or by hand); the app opens the screen named
 in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the script). `docs/sideload.md` says how it gets onto a phone.
+What runs when: a `changes` job (`git diff` against the PR's base) lets the Mac jobs skip pull requests that
+can't affect them: `ios` and CodeQL `swift` only for `App/`, `Packages/`, `project.yml` or their workflow, CodeQL `actions`
+only for `.github/`; pushes to `main`, the weekly CodeQL run and runs by hand always do everything. Use a job-level `if:`,
+never a workflow `paths:` filter (a required check that never starts blocks the merge; a skipped one passes). A new push
+to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run on every PR.
 
 ## Layout
 

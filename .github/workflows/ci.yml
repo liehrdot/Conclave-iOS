@@ -14,7 +14,35 @@ env:
 permissions:
   contents: read
 
+# a new push to a pull request stops the run of the push before it, so outdated runs don't hold the few Mac
+# runners; pushes to main and runs started by hand each get their own group and are never cancelled
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
+  # what did this change touch? A quick look on Linux, so the Mac jobs below only start when they have
+  # something to check. A skipped job counts as passed for the required checks.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.diff.outputs.app }}
+      icon: ${{ steps.diff.outputs.icon }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        # a base git can't compare against (a new branch, a run started by hand) counts as changed
+        run: |
+          changed() { if git diff --quiet "$BASE" HEAD -- "$@"; then echo false; else echo true; fi; }
+          echo "app=$(changed App Packages project.yml .github/workflows/ci.yml)" >> "$GITHUB_OUTPUT"
+          echo "icon=$(changed App/AppIcon.icon scripts/icon.sh)" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
   # ConclaveCore has no UI, so its tests run on Linux: fast, and they run on every push
   tests:
     runs-on: ubuntu-latest
@@ -24,8 +52,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: swift test --package-path Packages/ConclaveCore
 
-  # the app itself needs a Mac: GitHub's runner is ours
+  # the app itself needs a Mac: GitHub's runner is ours. On a pull request only when the app can have changed;
+  # on main always, for the .ipa
   ios:
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.app == 'true'
     runs-on: macos-26
     timeout-minutes: 30
     steps:
@@ -84,31 +115,11 @@ jobs:
           path: screenshots
           retention-days: 14
 
-  # did this change touch the app icon? A quick look on Linux, so the Mac job below only starts when it did
-  icon-changed:
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.diff.outputs.changed }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - id: diff
-        env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        # a base git can't compare against (a new branch) counts as changed
-        run: |
-          if git diff --quiet "$BASE" HEAD -- App/AppIcon.icon scripts/icon.sh; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
   # the app icon as iOS draws it, in every appearance, and on the Home Screen: the "icon" artifact.
   # Only when the icon changed or when started by hand: it boots a simulator, which takes most of its 10+ Mac minutes
   icon:
-    needs: icon-changed
-    if: github.event_name == 'workflow_dispatch' || needs.icon-changed.outputs.changed == 'true'
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.icon == 'true'
     runs-on: macos-26
     timeout-minutes: 30
     steps:
