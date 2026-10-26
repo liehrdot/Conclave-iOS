@@ -92,7 +92,7 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `collectionFilters` as JSON; colours and types prefetch the collection's cards into `CardLibrary` once; `FiltersRow` above the
   list says them in words, with Clear) › `CollectionCardView`: a section per entry with copies (a `Stepper` that saves once the taps pause
   for 700 ms), Proxy and Foil toggles, Place › `PlacePicker`, and "Remove from Collection" without a question, since the toast
-  has "Undo"; "Add Another" there, "+" on the tab › `AddByNameView` and "Add to Collection" in `CardSheet` open
+  has "Undo"; "Add Another" there, "Add Card" (top left) › `AddByNameView` and "Add to Collection" in `CardSheet` open
   `AddToCollectionView`/`AddToCollectionForm`: printing with "Other Printing", Original/Proxy, Foil, language (swaps to that
   language's printing), place, copies; Original/Proxy and the place are remembered in `AppStorage` `addProxy`/`addPlace`/`addDeck`)
   and the search tab Cards (`CardsView`, `Tab(role: .search)`:
