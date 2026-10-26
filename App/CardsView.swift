@@ -53,7 +53,9 @@ struct CardsView: View {
                 if AppModel.startScreen == nil { UserDefaults.standard.set(mode.rawValue, forKey: "cardMode") }
             }
             .toolbar {
-                ToolbarItem(placement: .principal) {
+                // leading, not centred: the trailing buttons differ per mode (Filters only for Name), and a
+                // centred item moves sideways when they do
+                ToolbarItem(placement: .topBarLeading) {
                     Picker("Search by", selection: $mode) {
                         Text("Name").tag(Mode.name)
                         Text("Describe").tag(Mode.describe)
