@@ -63,6 +63,11 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   and place), `collectionTotals`, `placeName(of:)`, `knownPlaces` (`collection.js`/`scan.js` `knownPlaces()`), and
   `CollectionEdit` = the Collection tab's `collection.update` payloads (copies, proxy, foil, `move` to a deck or place, `remove`
   with `restore` for "Undo"), like the PWA's `entrySheet()` and `placePage()`.
+  `CollectionFilters.swift` = the Collection tab's "Sort and Filter" (more than the web app has): `CollectionFilters` (places as
+  `deck:<slug>`/`place:<text>`/`none`/`free`, colours like a colour identity (`id<=`, colourless only with C), types from the front
+  face's type line, sets, languages, `minValue` per original copy; kinds combine, choices within a kind are "or"; `summary()` in
+  words), `CollectionSort` (name, value, copies, set), `collectionGroups(…filters:sort:card:)` (keeps only matching entries),
+  `collectionChoices` (`CollectionChoices`: only the decks, places, sets and languages the collection has).
   `Printing.swift`: `Printing` = one printing in one language (Scryfall's id, set, number, finishes, prices, printed name);
   `Scryfall.printing(set:number:lang:)`, `printing(named:set:)` (fuzzy) and `printings(of:anyLanguage:)` mirror `scry.js`
   `printing()`/`named()`/`prints()`; `CollectionAddDraft` = the add sheet's choices (foil only as far as the printing was made
@@ -83,14 +88,16 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`: tag chips "What It Does" save on a tap, "Add Note" › `AddNoteView`,
   "Edit" › `EditOpponentView` (name, player, bracket; not the commander yet)), Collection (`CollectionView`: totals as
   `StatPill`s, an All/Original/Proxy/Foil filter kept in `AppStorage` `collectionFilter`, `.searchable`, one row per card with
-  its printing's picture › `CollectionCardView`: a section per entry with copies (a `Stepper` that saves once the taps pause
+  its printing's picture, "Sort and Filter" in the top bar › `CollectionFilterSheet` (kept in `AppStorage` `collectionSort` /
+  `collectionFilters` as JSON; colours and types prefetch the collection's cards into `CardLibrary` once; `FiltersRow` above the
+  list says them in words, with Clear) › `CollectionCardView`: a section per entry with copies (a `Stepper` that saves once the taps pause
   for 700 ms), Proxy and Foil toggles, Place › `PlacePicker`, and "Remove from Collection" without a question, since the toast
-  has "Undo"; "Add Another" there, "+" on the tab › `AddByNameView` and "Add to Collection" in `CardSheet` open
+  has "Undo"; "Add Another" there, "Add Card" (top left) › `AddByNameView` and "Add to Collection" in `CardSheet` open
   `AddToCollectionView`/`AddToCollectionForm`: printing with "Other Printing", Original/Proxy, Foil, language (swaps to that
   language's printing), place, copies; Original/Proxy and the place are remembered in `AppStorage` `addProxy`/`addPlace`/`addDeck`)
   and the search tab Cards (`CardsView`, `Tab(role: .search)`:
   `.searchable`, `find(name:)` 300 ms after typing pauses, rows with `CardArt`, the last 12 opened in `AppStorage` `recentCards`, tap › `CardSheet`; "Filters" in the top bar › `FilterSheet` (with a filter the name search is one paged `Scryfall.search`, without a name
-  the most played cards that fit; `FilterSummary` row above the results); a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
+  the most played cards that fit; `FiltersRow` (shared with the Collection tab: a plain line, words in the label colour) above the results); a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
   `Server.describe` › `Scryfall.search` with "Show More", the broader query when nothing matched, the query shown; 409 › `AISetupView` (also in
   Settings › "Search by Description": key as `SecureField`, model picker, sends only what changed); not in the demo); the outbox's status (`App/OutboxStatus.swift`): on the iPhone from iOS 26.1 the
   tab bar's bottom accessory (`.outboxAccessory()` on the `TabView`, `tabViewBottomAccessory(isEnabled:)`, shown only while
