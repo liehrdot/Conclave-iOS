@@ -65,9 +65,6 @@ jobs:
         run: |
           sudo xcode-select -s "/Applications/Xcode_${XCODE}.app"
           xcodebuild -version
-      # booting takes minutes: start it now, so it runs while the app builds
-      - name: Boot the simulators
-        run: scripts/screenshots.sh boot
       - run: brew install xcodegen
       - run: xcodegen generate
       # the simulator runs unsigned apps, so no signing here either

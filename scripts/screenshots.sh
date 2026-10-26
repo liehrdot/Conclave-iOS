@@ -3,13 +3,11 @@
 # iPad. CI runs it on every pull request, so a PR that changes a screen shows how it looks without
 # anyone needing a Mac.
 #
-# Usage:
-#   scripts/screenshots.sh boot                         starts both simulators and returns at once
-#   scripts/screenshots.sh <path to Conclave.app> <out>  takes the screenshots
+# Usage: scripts/screenshots.sh <path to Conclave.app> <output folder>
 #
-# Booting a simulator on a CI runner takes minutes (6 for the iPhone, 3.5 for the iPad on 2026-10-26),
-# more than all the screenshots together. So CI starts the boot before it builds the app, and the
-# iPhone and the iPad then run side by side instead of one after the other.
+# The iPhone and the iPad run side by side. A freshly booted simulator on a CI runner is slow for its
+# first minutes, so every simulator command that takes 10 s or more is logged with its time: that shows
+# which step waits, and for how long.
 #
 # Each entry of SCREENS is a screen name the app opens straight away when it gets it as the
 # environment variable CONCLAVE_SCREEN (the simulator passes on every SIMCTL_CHILD_* variable).
@@ -32,21 +30,20 @@ device() {
       | (map(select(.name | test("Pro"))) + .) | first | .udid'
 }
 
-if [ "${1:-}" = "boot" ]; then
-  echo "Runtime: $runtime"
-  for kind in "${DEVICES[@]}"; do
-    udid=$(device "$kind")
-    echo "Booting $kind ($udid)"
-    # in the background: the next CI steps run while it boots, and the screenshot step waits for it
-    nohup xcrun simctl boot "$udid" >/dev/null 2>&1 &
-  done
-  exit 0
-fi
-
 app="$1"
 out="$2"
 mkdir -p "$out"
 echo "Runtime: $runtime"
+
+# runs a command and logs it when it takes 10 s or more, on fd 3 (the log), since the callers
+# silence the command's own output
+exec 3>&1
+timed() {
+  local start=$SECONDS status=0
+  "$@" || status=$?
+  if ((SECONDS - start >= 10)); then echo "    $((SECONDS - start)) s: simctl $3 ($kind)" >&3; fi
+  return $status
+}
 
 # all screenshots of one device, light and dark
 shoot() {
@@ -56,21 +53,21 @@ shoot() {
   slug=$(echo "$kind" | tr '[:upper:]' '[:lower:]')
   echo "Device: $name ($udid)"
 
-  xcrun simctl boot "$udid" 2>/dev/null || true # already booting when CI ran "boot" first
-  xcrun simctl bootstatus "$udid" -b >/dev/null
+  timed xcrun simctl boot "$udid" 2>/dev/null || true
+  timed xcrun simctl bootstatus "$udid" -b >/dev/null
   # Apple's marketing screenshots: 9:41, full bars, full battery
   xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiBars 3 \
     --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
-  xcrun simctl install "$udid" "$app"
+  timed xcrun simctl install "$udid" "$app"
 
   for appearance in light dark; do
     xcrun simctl ui "$udid" appearance "$appearance"
     for screen in "${SCREENS[@]}"; do
-      xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
-      SIMCTL_CHILD_CONCLAVE_SCREEN="$screen" xcrun simctl launch "$udid" "$bundle" >/dev/null
+      timed xcrun simctl terminate "$udid" "$bundle" 2>/dev/null || true
+      SIMCTL_CHILD_CONCLAVE_SCREEN="$screen" timed xcrun simctl launch "$udid" "$bundle" >/dev/null
       sleep 4 # first launch, keyboard-free: long enough for the first frame and its animations
       case "$screen" in card | cards | filters) sleep 4 ;; esac # pictures and search results come from Scryfall
-      xcrun simctl io "$udid" screenshot --type=png "$out/$slug-$appearance-$screen.png" >/dev/null 2>&1
+      timed xcrun simctl io "$udid" screenshot --type=png "$out/$slug-$appearance-$screen.png" >/dev/null 2>&1
       echo "  $slug-$appearance-$screen.png"
     done
   done
