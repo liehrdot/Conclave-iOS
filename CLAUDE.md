@@ -75,7 +75,7 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   return and every minute via `Connection.refresh`; a 401 leads back to the welcome screen), `RootView` (welcome or
   `MainView`), `WelcomeView` → `ScanView` (VisionKit QR) or `EnterCodeView`; `MainView` = tabs Decks (`DecksView` →
   `DeckView` → `Rule0View` sheet, `LogGameView` sheet ("Log a Game": result as a segmented control, opponents via `OpponentPicker`,
-  places, "More Details"), `CardSheet` per card: the own copy's printing (foil sheen, several copies to pick),
+  places, "More Details"), `CardSheet` per card: the own copy's printing (foil sheen, several copies to pick; from the Collection tab all the person's copies, `inDeck: false`),
   else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`: tag chips "What It Does" save on a tap, "Add Note" › `AddNoteView`,
   "Edit" › `EditOpponentView` (name, player, bracket; not the commander yet)), Collection (`CollectionView`: totals as
   `StatPill`s, an All/Original/Proxy/Foil filter kept in `AppStorage` `collectionFilter`, `.searchable`, one row per card with

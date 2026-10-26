@@ -170,16 +170,22 @@ struct CollectionCardView: View {
         .artList(over: name)
         .navigationTitle(name)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $shownCard) { shown in CardSheet(name: shown.name, copies: []) }
+        .sheet(item: $shownCard) { shown in CardSheet(name: shown.name, copies: shownCopies, inDeck: false) }
     }
 
-    /// The first printing's picture; a tap opens the card's text.
+    /// The copies the card sheet shows: those with a known printing (their picture), then the rest.
+    private var shownCopies: [CollectionEntry] {
+        entries.filter { $0.imageURL() != nil } + entries.filter { $0.imageURL() == nil }
+    }
+
+    /// The first printing's picture; a tap opens the card sheet with these printings.
     private var picture: some View {
         Button {
             shownCard = DeckView.ShownCard(name: name)
         } label: {
-            CardImage(url: entries.lazy.compactMap { $0.imageURL() }.first)
+            CardImage(url: shownCopies.first?.imageURL())
                 .aspectRatio(63 / 88, contentMode: .fit)
+                .clipShape(CardShape())
                 .frame(maxWidth: 220)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)

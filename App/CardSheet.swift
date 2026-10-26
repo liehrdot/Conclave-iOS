@@ -9,6 +9,8 @@ struct CardSheet: View {
     let name: String
     /// The person's copies placed in the deck, real ones first (`ReadModel.copies(of:in:)`).
     let copies: [CollectionEntry]
+    /// The copies are the deck's (from a deck), or all of the person's (from the Collection tab).
+    var inDeck = true
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var card: Card?
@@ -88,7 +90,7 @@ struct CardSheet: View {
                 .foregroundStyle(.secondary)
         } else {
             VStack(alignment: .leading, spacing: 8) {
-                Text(copies.count == 1 ? "Your Copy in This Deck" : "Your Copies in This Deck")
+                Text((copies.count == 1 ? "Your Copy" : "Your Copies") + (inDeck ? " in This Deck" : ""))
                     .font(.headline)
                 if copies.count == 1, let entry = copies.first {
                     CopyRow(entry: entry, selected: false)
@@ -222,7 +224,7 @@ struct CardPicture: View {
     private func face(_ url: URL?) -> some View {
         CardImage(url: url)
             .overlay { if foil { FoilSheen() } }
-            .clipShape(.rect(cornerRadius: 14))
+            .clipShape(CardShape())
             .shadow(color: .black.opacity(0.25), radius: 8, y: 4)
     }
 }
@@ -299,5 +301,13 @@ final class CardImages: @unchecked Sendable {  // NSCache and URLSession are thr
               let image = await UIImage(data: answer.0)?.byPreparingForDisplay() else { return nil }
         memory.setObject(image, forKey: url as NSURL)
         return image
+    }
+}
+
+/// A card's outline: its corners are rounded by about 1/21 of its width, like a printed card (3 mm of
+/// 63 mm), at any size. Scryfall's JPEGs have square corners with the border colour in them.
+struct CardShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path(roundedRect: rect, cornerRadius: rect.width * 3 / 63, style: .continuous)
     }
 }
