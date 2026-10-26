@@ -7,7 +7,7 @@ struct MainView: View {
     let device: Device
     @State private var page: Page = switch AppModel.startScreen {
     case "opponents", "opponent", "edit-opponent": .opponents
-    case "cards", "describe": .cards
+    case "cards", "filters", "describe": .cards
     default: .decks
     }
 

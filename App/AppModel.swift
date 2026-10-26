@@ -235,7 +235,7 @@ extension AppModel {
     /// The screen the CI screenshots open (`CONCLAVE_SCREEN`, scripts/screenshots.sh); nil in normal use.
     static let startScreen = ProcessInfo.processInfo.environment["CONCLAVE_SCREEN"]
     /// Screens that show the made-up account in `demo.json`.
-    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "log-game", "saved", "opponents", "opponent", "edit-opponent", "cards", "describe", "settings"]
+    static let demoScreens: Set = ["decks", "deck", "rule0", "card", "log-game", "saved", "opponents", "opponent", "edit-opponent", "cards", "filters", "describe", "settings"]
 
     /// The real app keeps the device in the Keychain and the decks in Application Support (not Caches:
     /// iOS may empty those); a screenshot starts from a made-up state instead.

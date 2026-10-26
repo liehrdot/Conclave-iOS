@@ -46,7 +46,8 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   default printing's pictures); `CardLibrary` keeps them on disk by name (`prefetch` when a deck opens, `clear()` on
   sign-out; `remember` keeps a search's English cards). Search (`scry.js` `searchQuery()`/`searchCards()`): `Scryfall.search(query, page:)` =
   one `SearchPage` (`order=edhrec`, 404 = no hits, 400 = `CardError.badQuery`, "+" sent encoded), `find(name:)` = `NameHit`s for a typed
-  English or German name (multilingual search + autocomplete, `exactFirst`). `Describe.swift`: `Server.describe` (`POST /api/app/cards/describe` › `DescribeAnswer`),
+  English or German name (multilingual search + autocomplete, `exactFirst`). `CardFilter` = the Cards tab's filters (a Tagger `role`, colours,
+  types) as one Scryfall query; `compose()` mirrors the server's `cardsearch.compose()`. `Describe.swift`: `Server.describe` (`POST /api/app/cards/describe` › `DescribeAnswer`),
   `aiSettings()`/`setAI(key:model:)` (`GET|PUT /api/app/ai`, `AISettings` never holds the key), `ServerError.needsSetup` (409). `Outbox` (an actor, kept in a file) = the phone's changes on their way to the server, like the web app's
   `data.js`: `add`, `flush(to:)` (`POST /api/app/ops`, batches of 50, backoff 5 s → 5 min, `retry` stays, refused → `failed`),
   `confirm(etag:)` drops sent ops once a read model's seq covers their ack, `undo` (drop if unsent, else `inverse` = `INVERSE`).
@@ -67,7 +68,8 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   places, "More Details"), `CardSheet` per card: the own copy's printing (foil sheen, several copies to pick),
   else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`: tag chips "What It Does" save on a tap, "Add Note" › `AddNoteView`,
   "Edit" › `EditOpponentView` (name, player, bracket; not the commander yet)) and the search tab Cards (`CardsView`, `Tab(role: .search)`:
-  `.searchable`, `find(name:)` 300 ms after typing pauses, rows with `CardArt`, the last 12 opened in `AppStorage` `recentCards`, tap › `CardSheet`; a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
+  `.searchable`, `find(name:)` 300 ms after typing pauses, rows with `CardArt`, the last 12 opened in `AppStorage` `recentCards`, tap › `CardSheet`; "Filters" in the top bar › `FilterSheet` (with a filter the name search is one paged `Scryfall.search`, without a name
+  the most played cards that fit; `FilterSummary` row above the results); a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
   `Server.describe` › `Scryfall.search` with "Show More", the broader query when nothing matched, the query shown; 409 › `AISetupView` (also in
   Settings › "Search by Description": key as `SecureField`, model picker, sends only what changed); not in the demo); both tabs carry `.outboxStatus()` (`App/OutboxStatus.swift`: a glass pill above the tab
   bar = the "… saved" toast with "Undo" for 6 s, else "N changes weren't saved" › `RefusedChanges` sheet, else a quiet
@@ -77,7 +79,7 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   Screens for screenshots: `welcome`, `code`, `scan` (the simulator has no camera: "No Camera"), `signed-off`, and
   with the made-up account `App/Resources/demo.json` (written by `scripts/make_demo.py` from the web app's demo):
   `decks`, `deck`, `rule0`, `log-game` (a filled-in loss), `saved` (the deck screen with the toast after `screenshotGame`), `card` (the foil Birds of Paradise placed in the first deck; picture from Scryfall),
-  `opponents`, `opponent`, `edit-opponent`, `cards` (a search for "Sol"), `describe` (a filled-in description), `settings` (the demo's settings) (`AppModel.launch()`, no Keychain).
+  `opponents`, `opponent`, `edit-opponent`, `cards` (a search for "Sol"), `filters` (green ramp, no name), `describe` (a filled-in description), `settings` (the demo's settings) (`AppModel.launch()`, no Keychain).
   Demo mode: "No PC at hand? Try the Demo" on the welcome screen = `AppModel.startDemo()`: the same `demo.json` with
   the stand-in `Device.demo` (never saved, no token, `refresh()` skips it), kept across launches in UserDefaults
   `demo` like the PWA's `amtisch.mode`; "Demo" in the top bar (`DemoBadge`) and Settings › "Leave Demo".

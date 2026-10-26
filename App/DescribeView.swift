@@ -24,9 +24,9 @@ struct DescribeSearch: View {
     @State private var shown: DeckView.ShownCard?
     @FocusState private var focused: Bool
 
-    private static let colorChoices = zip(DescribeFilter.colors, ["White", "Blue", "Black", "Red", "Green", "Colorless"])
+    static let colorChoices = zip(DescribeFilter.colors, ["White", "Blue", "Black", "Red", "Green", "Colorless"])
         .map { Options.Choice(key: $0, label: $1) }
-    private static let typeChoices = DescribeFilter.types.map { Options.Choice(key: $0, label: $0.capitalized) }
+    static let typeChoices = DescribeFilter.types.map { Options.Choice(key: $0, label: $0.capitalized) }
 
     private var ready: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !busy }
 
