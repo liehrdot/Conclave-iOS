@@ -90,17 +90,14 @@ struct CollectionView: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                 if !filters.isEmpty || sort != .name {
-                    FiltersRow(text: summary(filters, library), edit: { filtering = true }) {
+                    // a quiet line on the background under the picker, not a panel: it describes the list below
+                    FiltersRow(text: summary(filters, library), loading: loadingCards, edit: { filtering = true }) {
                         savedFilters = Data()
                         sort = .name
                     }
-                    .materialRow()
-                }
-                if loadingCards {
-                    Label("Looking up colors and types…", systemImage: "arrow.down.circle")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .materialRow()
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 4, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
                 }
             }
             Section {
@@ -150,26 +147,41 @@ struct CollectionView: View {
     }
 }
 
-/// The filters in words, tap to change them, and "Clear". Like the Cards tab's `FilterSummary`.
+/// The filters in words (tap to change them) and "Clear": the icon and the button in the accent colour, as
+/// they can be tapped, the words in the normal label colour so they're easy to read (HIG, Color).
 private struct FiltersRow: View {
     let text: String
+    /// The cards' colours and types are still being looked up.
+    let loading: Bool
     let edit: () -> Void
     let clear: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             Button(action: edit) {
-                Label(text, systemImage: "line.3.horizontal.decrease")
-                    .foregroundStyle(Color.accentColor)
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .contentShape(.rect)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .foregroundStyle(Color.accentColor)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(text)
+                            .foregroundStyle(Color.primary)
+                        if loading {
+                            Text("Looking up colors and types…")
+                                .foregroundStyle(Color.secondary)
+                        }
+                    }
+                }
+                .font(.subheadline)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(.rect)
             }
             .buttonStyle(.plain)
             .accessibilityHint("Changes the filters")
-            Button("Clear Filters", systemImage: "xmark.circle.fill", action: clear)
-                .labelStyle(.iconOnly)
-                .foregroundStyle(.secondary)
+            Button("Clear", action: clear)
+                .buttonStyle(.borderless) // two buttons in one list row: each needs its own style, or a tap fires both
+                .font(.subheadline)
                 .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel("Clear Filters")
         }
     }
 }
