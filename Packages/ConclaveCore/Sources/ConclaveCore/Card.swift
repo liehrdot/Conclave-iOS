@@ -63,6 +63,15 @@ struct ScryfallCard: Decodable {
     var imageUris: Images?
     var cardFaces: [Face]?
     var scryfallUri: URL?
+    // the printing's own facts (`Printing`)
+    var id: String?
+    var oracleId: String?
+    var set: String?
+    var setName: String?
+    var collectorNumber: String?
+    var releasedAt: String?
+    var finishes: [String]?
+    var prices: [String: String?]?
 
     var card: Card {
         func stats(_ power: String?, _ toughness: String?, _ loyalty: String?, _ defense: String?) -> String? {

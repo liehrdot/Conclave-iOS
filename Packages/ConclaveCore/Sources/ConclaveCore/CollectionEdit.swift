@@ -125,16 +125,20 @@ public enum CollectionEdit {
     /// tidied like the server does it (`appops._place`), and a typed deck name means that deck. nil when
     /// nothing changes.
     public static func move(_ entry: CollectionEntry, place: String = "", deck: String = "", decks: [Deck] = []) -> JSONValue? {
-        var text = String(place.split(whereSeparator: \.isWhitespace).joined(separator: " ").prefix(80))
-        var slug = deck
-        if slug.isEmpty, let named = decks.first(where: { $0.name.lowercased() == text.lowercased() }) {
-            slug = named.slug
-        }
-        if !slug.isEmpty { text = "" }
+        let (text, slug) = placed(place: place, deck: deck, decks: decks)
         let before = (place: entry.placeDeck?.isEmpty ?? true ? entry.place ?? "" : "", deck: entry.placeDeck ?? "")
         guard text != before.place || slug != before.deck else { return nil }
         return .object(["id": .string(entry.id), "place": .string(text), "place_deck": .string(slug),
                         "prev": .object(["place": .string(entry.place ?? ""), "place_deck": .string(entry.placeDeck ?? "")])])
+    }
+
+    /// A picked place as the server keeps it: the text with its spaces tidied (`appops._place`), at most
+    /// 80 characters, or the deck's slug and no text. A typed deck name means that deck, like `placePage()`.
+    public static func placed(place: String, deck: String, decks: [Deck]) -> (place: String, deck: String) {
+        let text = String(place.split(whereSeparator: \.isWhitespace).joined(separator: " ").prefix(80))
+        if !deck.isEmpty { return ("", deck) }
+        if let named = decks.first(where: { $0.name.lowercased() == text.lowercased() }) { return ("", named.slug) }
+        return (text, "")
     }
 
     /// The entry as `collection.add` takes it, for the undo of a removal.
