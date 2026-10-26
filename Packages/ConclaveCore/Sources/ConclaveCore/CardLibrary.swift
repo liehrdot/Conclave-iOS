@@ -5,7 +5,7 @@ import Foundation
 /// cache and `info()` in the PWA's `scry.js`.
 public actor CardLibrary {
     /// Scryfall itself, for searches (they go past the library: a search's results change, a card doesn't).
-    public let scryfall: Scryfall
+    public nonisolated let scryfall: Scryfall
     /// The file, or nil to keep the cards in memory only (screenshots, tests).
     let file: URL?
     private var cards: [String: Card] = [:]
