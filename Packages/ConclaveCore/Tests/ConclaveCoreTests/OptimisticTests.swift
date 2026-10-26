@@ -7,7 +7,7 @@ import Testing
 @Suite struct OptimisticTests {
     /// The types `Optimistic` handles so far; the others come with their screens.
     static let handled: Set = ["game.add", "game.delete", "opponent.add", "opponent.update", "opponent.note",
-                               "opponent.note_delete", "opponent.delete"]
+                               "opponent.note_delete", "opponent.delete", "collection.add", "collection.update"]
 
     static var cases: [JSONValue] {
         APICasesTests.cases.filter { handled.contains($0["op"]?["type"]?.string ?? "") }

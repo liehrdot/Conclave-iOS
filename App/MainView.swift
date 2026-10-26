@@ -1,17 +1,18 @@
 import ConclaveCore
 import SwiftUI
 
-/// A paired phone: the tabs Decks and Opponents, and Cards as the search tab (iOS 26 sets it apart
+/// A paired phone: the tabs Decks, Opponents and Collection, and Cards as the search tab (iOS 26 sets it apart
 /// at the end of the tab bar).
 struct MainView: View {
     let device: Device
     @State private var page: Page = switch AppModel.startScreen {
     case "opponents", "opponent", "edit-opponent": .opponents
+    case "collection", "collection-card": .collection
     case "cards", "filters", "describe": .cards
     default: .decks
     }
 
-    enum Page: Hashable { case decks, opponents, cards }
+    enum Page: Hashable { case decks, opponents, collection, cards }
 
     var body: some View {
         TabView(selection: $page) {
@@ -24,6 +25,11 @@ struct MainView: View {
                 OpponentsView(device: device)
             } label: {
                 TabLabel("Opponents", systemImage: "person.2.fill")
+            }
+            Tab(value: Page.collection) {
+                CollectionView(device: device)
+            } label: {
+                TabLabel("Collection", systemImage: "books.vertical.fill")
             }
             Tab("Cards", systemImage: "magnifyingglass", value: Page.cards, role: .search) {
                 CardsView(device: device)
