@@ -63,6 +63,11 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   and place), `collectionTotals`, `placeName(of:)`, `knownPlaces` (`collection.js`/`scan.js` `knownPlaces()`), and
   `CollectionEdit` = the Collection tab's `collection.update` payloads (copies, proxy, foil, `move` to a deck or place, `remove`
   with `restore` for "Undo"), like the PWA's `entrySheet()` and `placePage()`.
+  `CollectionFilters.swift` = the Collection tab's "Sort and Filter" (more than the web app has): `CollectionFilters` (places as
+  `deck:<slug>`/`place:<text>`/`none`/`free`, colours like a colour identity (`id<=`, colourless only with C), types from the front
+  face's type line, sets, languages, `minValue` per original copy; kinds combine, choices within a kind are "or"; `summary()` in
+  words), `CollectionSort` (name, value, copies, set), `collectionGroups(…filters:sort:card:)` (keeps only matching entries),
+  `collectionChoices` (`CollectionChoices`: only the decks, places, sets and languages the collection has).
   `Printing.swift`: `Printing` = one printing in one language (Scryfall's id, set, number, finishes, prices, printed name);
   `Scryfall.printing(set:number:lang:)`, `printing(named:set:)` (fuzzy) and `printings(of:anyLanguage:)` mirror `scry.js`
   `printing()`/`named()`/`prints()`; `CollectionAddDraft` = the add sheet's choices (foil only as far as the printing was made
@@ -83,7 +88,9 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`: tag chips "What It Does" save on a tap, "Add Note" › `AddNoteView`,
   "Edit" › `EditOpponentView` (name, player, bracket; not the commander yet)), Collection (`CollectionView`: totals as
   `StatPill`s, an All/Original/Proxy/Foil filter kept in `AppStorage` `collectionFilter`, `.searchable`, one row per card with
-  its printing's picture › `CollectionCardView`: a section per entry with copies (a `Stepper` that saves once the taps pause
+  its printing's picture, "Sort and Filter" in the top bar › `CollectionFilterSheet` (kept in `AppStorage` `collectionSort` /
+  `collectionFilters` as JSON; colours and types prefetch the collection's cards into `CardLibrary` once; `FiltersRow` above the
+  list says them in words, with Clear) › `CollectionCardView`: a section per entry with copies (a `Stepper` that saves once the taps pause
   for 700 ms), Proxy and Foil toggles, Place › `PlacePicker`, and "Remove from Collection" without a question, since the toast
   has "Undo"; "Add Another" there, "+" on the tab › `AddByNameView` and "Add to Collection" in `CardSheet` open
   `AddToCollectionView`/`AddToCollectionForm`: printing with "Other Printing", Original/Proxy, Foil, language (swaps to that

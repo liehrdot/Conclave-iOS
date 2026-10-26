@@ -9,6 +9,13 @@ struct CollectionView: View {
     @Environment(AppModel.self) private var model
     @State private var query = ""
     @AppStorage("collectionFilter") private var filter: CollectionFilter = .all
+    @AppStorage("collectionSort") private var sort: CollectionSort = .name
+    /// The Filters sheet's choices, kept as JSON so they're still there next time.
+    @AppStorage("collectionFilters") private var savedFilters = Data()
+    @State private var filtering = false
+    /// The cards' Scryfall data (colours, types), looked up once a filter needs it.
+    @State private var cards: [String: Card] = [:]
+    @State private var loadingCards = false
     @State private var path: [String] = AppModel.startScreen == "collection-card" ? ["Birds of Paradise"] : []
     @State private var adding = false
 
@@ -26,6 +33,10 @@ struct CollectionView: View {
             .navigationDestination(for: String.self) { name in CollectionCardView(name: name) }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button("Sort and Filter", systemImage: filters.isEmpty && sort == .name
+                           ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill") { filtering = true }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Add a Card", systemImage: "plus") { adding = true }
                 }
                 ToolbarItem(placement: .topBarTrailing) { SettingsButton(device: device) }
@@ -35,17 +46,62 @@ struct CollectionView: View {
             }
         }
         .sheet(isPresented: $adding) { AddByNameView() }
+        .sheet(isPresented: $filtering) {
+            CollectionFilterSheet(filters: filtersBinding, sort: $sort)
+                .presentationDetents([.medium, .large])
+        }
+        .task(id: cardsWanted) { await loadCards() }
         .outboxStatus()
     }
 
+    private var filters: CollectionFilters {
+        (try? JSONDecoder().decode(CollectionFilters.self, from: savedFilters)) ?? CollectionFilters()
+    }
+
+    private var filtersBinding: Binding<CollectionFilters> {
+        Binding(get: { filters }, set: { savedFilters = (try? JSONEncoder().encode($0)) ?? Data() })
+    }
+
+    /// The names whose colours and types a filter needs; empty while no filter does.
+    private var cardsWanted: [String] {
+        guard filters.needsCards, let library = model.library else { return [] }
+        return Array(Set(library.collection.map(\.name))).sorted()
+    }
+
+    /// Looks the cards up (once: the library keeps them on disk, so it works offline afterwards).
+    private func loadCards() async {
+        let names = cardsWanted
+        guard !names.isEmpty else { return }
+        if names.contains(where: { cards[$0] == nil }) { loadingCards = true }
+        await model.cards.prefetch(names)
+        var found: [String: Card] = [:]
+        for name in names { found[name] = await model.cards.cached(name) }
+        cards = found
+        loadingCards = false
+    }
+
     private func list(_ library: ReadModel) -> some View {
-        let groups = library.collectionGroups(matching: query, filter: filter)
+        let filters = self.filters
+        let groups = library.collectionGroups(matching: query, filter: filter, filters: filters, sort: sort) { cards[$0] }
         return List {
             Section {
                 header(library.collectionTotals)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
+                if !filters.isEmpty || sort != .name {
+                    FiltersRow(text: summary(filters, library), edit: { filtering = true }) {
+                        savedFilters = Data()
+                        sort = .name
+                    }
+                    .materialRow()
+                }
+                if loadingCards {
+                    Label("Looking up colors and types…", systemImage: "arrow.down.circle")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .materialRow()
+                }
             }
             Section {
                 ForEach(groups) { group in
@@ -56,13 +112,21 @@ struct CollectionView: View {
             if groups.isEmpty {
                 // the search and filter stay on screen, so they can be changed right here
                 ContentUnavailableView(query.isEmpty ? "Nothing Here" : "No Matches", systemImage: "magnifyingglass",
-                                       description: Text(query.isEmpty ? "No card fits this filter." : "No card fits “\(query)”."))
+                                       description: Text(query.isEmpty ? (filters.isEmpty ? "No card fits this filter." : "No card fits these filters.")
+                                                         : "No card fits “\(query)”."))
                     .listRowBackground(Color.clear)
             }
         }
         .artList(over: library.collection.first?.name ?? "")
         .searchable(text: $query, prompt: "Name, set or place")
         .refreshable { await model.refresh() }
+    }
+
+    /// "Green · Creature · in Binder · by value".
+    private func summary(_ filters: CollectionFilters, _ library: ReadModel) -> String {
+        let text = filters.summary(decks: library.decks, places: library.knownPlaces)
+        let order = sort == .name ? nil : "by \(sort.label.lowercased())"
+        return [text.isEmpty ? nil : text, order].compactMap { $0 }.joined(separator: " · ")
     }
 
     /// The totals as panels, and the filter.
@@ -83,6 +147,103 @@ struct CollectionView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+    }
+}
+
+/// The filters in words, tap to change them, and "Clear". Like the Cards tab's `FilterSummary`.
+private struct FiltersRow: View {
+    let text: String
+    let edit: () -> Void
+    let clear: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: edit) {
+                Label(text, systemImage: "line.3.horizontal.decrease")
+                    .foregroundStyle(Color.accentColor)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Changes the filters")
+            Button("Clear Filters", systemImage: "xmark.circle.fill", action: clear)
+                .labelStyle(.iconOnly)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 44, minHeight: 44)
+        }
+    }
+}
+
+/// "Sort and Filter": the order, then where the copies are, colours, types, set, language and value. Only
+/// what the collection has is offered. Like the Cards tab's `FilterSheet`, with the same chips.
+private struct CollectionFilterSheet: View {
+    @Binding var filters: CollectionFilters
+    @Binding var sort: CollectionSort
+    @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        let choices = model.library?.collectionChoices
+        NavigationStack {
+            Form {
+                Section("Sort By") {
+                    Picker("Sort By", selection: $sort) {
+                        ForEach(CollectionSort.allCases, id: \.self) { Text($0.label) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                }
+                Section {
+                    ChoiceChips(title: "Where", choices: placeChoices(choices), picked: Array(filters.places)) { toggle($0, in: &filters.places) }
+                    ChoiceChips(title: "Colors", choices: DescribeSearch.colorChoices, picked: Array(filters.colors)) { toggle($0, in: &filters.colors) }
+                    ChoiceChips(title: "Card type", choices: DescribeSearch.typeChoices, picked: Array(filters.types)) { toggle($0, in: &filters.types) }
+                } footer: {
+                    Text("Colors work like a deck's colors: Black and Green shows black, green and black-green cards. Colorless cards show only when Colorless is picked too.")
+                }
+                Section {
+                    ChoiceChips(title: "Value of one copy", choices: CollectionFilters.values.map { Options.Choice(key: "\($0)", label: "Over \($0) €") },
+                                picked: filters.minValue.map { ["\($0)"] } ?? []) { key in
+                        filters.minValue = filters.minValue.map(String.init) == key ? nil : Int(key)
+                    }
+                    if let choices, choices.languages.count > 1 {
+                        ChoiceChips(title: "Language", choices: choices.languages.map {
+                            Options.Choice(key: $0, label: Locale.current.localizedString(forLanguageCode: $0) ?? $0.uppercased())
+                        }, picked: Array(filters.languages)) { toggle($0, in: &filters.languages) }
+                    }
+                    if let choices, !choices.sets.isEmpty {
+                        ChoiceChips(title: "Set", choices: choices.sets.map { Options.Choice(key: $0.code, label: $0.name) },
+                                    picked: Array(filters.sets)) { toggle($0, in: &filters.sets) }
+                    }
+                } footer: {
+                    Text("Values are the prices from when the cards were added. Proxies have none.")
+                }
+            }
+            .navigationTitle("Sort and Filter")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Clear") {
+                        filters = CollectionFilters()
+                        sort = .name
+                    }
+                    .disabled(filters.isEmpty && sort == .name)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", role: .confirm) { dismiss() }
+                }
+            }
+        }
+    }
+
+    /// Not in a deck, no place, each deck that holds copies, each place in use.
+    private func placeChoices(_ choices: CollectionChoices?) -> [Options.Choice] {
+        [Options.Choice(key: "free", label: "Not in a deck"), Options.Choice(key: "none", label: "No place")]
+            + (choices?.places ?? []).map { Options.Choice(key: "place:\($0.lowercased())", label: $0) }
+            + (choices?.decks ?? []).map { Options.Choice(key: "deck:\($0.slug)", label: $0.name) }
+    }
+
+    private func toggle(_ key: String, in set: inout Set<String>) {
+        if set.contains(key) { set.remove(key) } else { set.insert(key) }
     }
 }
 
