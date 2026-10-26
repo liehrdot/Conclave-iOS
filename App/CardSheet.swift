@@ -35,13 +35,13 @@ struct CardSheet: View {
                     copiesSection
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 20))
+                        .background(.regularMaterial, in: .rect(cornerRadius: 20)) // content, so a material; the sheet itself is the glass
                     if let card {
                         ForEach(Array(card.faces.enumerated()), id: \.offset) { _, face in
                             FaceText(face: face)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(16)
-                                .glassEffect(.regular, in: .rect(cornerRadius: 20))
+                                .background(.regularMaterial, in: .rect(cornerRadius: 20)) // content, so a material; the sheet itself is the glass
                         }
                         if let link = card.link {
                             Link(destination: link) {

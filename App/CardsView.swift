@@ -92,7 +92,7 @@ struct CardsView: View {
                         ForEach(recent, id: \.self) { name in row(name: name, subtitle: nil, type: nil) }
                     } header: {
                         HStack {
-                            GlassHeader("Recent")
+                            SectionTitle("Recent")
                             Spacer()
                             Button("Clear") { withAnimation { recentText = "" } }
                                 .font(.subheadline)
@@ -107,11 +107,11 @@ struct CardsView: View {
                 if let next, searched == current {
                     Button("Show More") { Task { await more(page: next) } }
                         .disabled(loadingMore)
-                        .glassRow()
+                        .materialRow()
                 }
             }
         }
-        .glassList(over: hits.first?.name ?? recent.first ?? "")
+        .artList(over: hits.first?.name ?? recent.first ?? "")
         .overlay { placeholder }
         .searchable(text: $query, prompt: "Card name, English or German")
         .autocorrectionDisabled()
@@ -242,7 +242,7 @@ struct SearchRow: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .glassRow()
+        .materialRow()
     }
 }
 
@@ -278,7 +278,7 @@ private struct FilterSummary: View {
                 .frame(minWidth: 44, minHeight: 44)
                 .buttonStyle(.plain)
         }
-        .glassRow()
+        .materialRow()
     }
 }
 

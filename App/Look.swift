@@ -2,8 +2,11 @@ import ConclaveCore
 import SwiftUI
 import UIKit
 
-// The app's look, picked by Flo from four variants (draft PR #14): Liquid Glass panels floating
-// over a commander's blurred art. These are the pieces the screens share.
+// The app's look: a commander's blurred art behind the screen (Flo's pick from draft PR #14), with the
+// content on standard materials. Liquid Glass stays where Apple puts it, on the bars and controls that
+// float above the content: "Don't use Liquid Glass in the content layer" (HIG, Materials). Flo chose
+// this on 2026-10-26 after the deep dive into Apple's guidelines.
+// These are the pieces the screens share.
 
 /// A card's art crop (Scryfall's `art_crop`), filling whatever frame it gets. A quiet grey shows
 /// while it loads or when there is no art.
@@ -36,7 +39,7 @@ struct CardArt: View {
 }
 
 /// A commander's art blurred behind the whole screen, toned down towards the background colour
-/// so text on glass stays readable in light and dark mode.
+/// so text on the material stays readable in light and dark mode.
 struct ArtBackdrop: View {
     let name: String
 
@@ -48,21 +51,59 @@ struct ArtBackdrop: View {
     }
 }
 
-/// A small outlined label in a capsule: the bracket, "Proxy", "Not legal".
+/// A small label in a capsule on the regular material, coloured only where the colour means something:
+/// a bracket carries a dot that gets warmer as the deck gets stronger, a problem ("Not legal") a red sign,
+/// anything else ("Proxy") is plain. The words always say it too, so colour is never the only signal
+/// (HIG, Accessibility).
 struct Chip: View {
+    enum Kind {
+        case plain
+        case bracket(Int)
+        case problem
+    }
+
     let text: String
+    var kind: Kind = .plain
+
+    /// "Bracket 3" with its dot.
+    static func bracket(_ bracket: Int) -> Chip { Chip(text: "Bracket \(bracket)", kind: .bracket(bracket)) }
 
     var body: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .foregroundStyle(Color.accentColor)
-            .background(Capsule().strokeBorder(Color.accentColor.opacity(0.6), lineWidth: 1))
+        HStack(spacing: 5) {
+            switch kind {
+            case .plain:
+                EmptyView()
+            case let .bracket(bracket):
+                Circle()
+                    .fill(Self.tone(bracket))
+                    .frame(width: 8, height: 8)
+            case .problem:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+            }
+            Text(text)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(.regularMaterial, in: .capsule)
+    }
+
+    /// Bracket 1 blue, 2 teal, 3 yellow, 4 orange, 5 red: the dot's colour. System colours, so they
+    /// adapt to dark mode and Increase Contrast (HIG, Color).
+    static func tone(_ bracket: Int) -> Color {
+        switch bracket {
+        case ...1: .blue
+        case 2: .teal // not green: green is the accent, which means "you can tap this" (HIG, Color)
+        case 3: .yellow
+        case 4: .orange
+        default: .red
+        }
     }
 }
 
-/// One number with its label on a small glass panel, used in the deck screen's header.
+/// One number with its label on a small panel, used in the deck and opponent headers.
 struct StatPill: View {
     let label: String
     let value: String
@@ -72,16 +113,16 @@ struct StatPill: View {
             Text(value)
                 .font(.headline)
                 .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .multilineTextAlignment(.center)
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.vertical, 10)
-        .glassEffect(.regular, in: .rect(cornerRadius: 16))
+        .padding(.horizontal, 4)
+        .background(.regularMaterial, in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
     }
 }
@@ -94,15 +135,13 @@ struct TileGrid<Content: View>: View {
 
     var body: some View {
         ScrollView {
-            GlassEffectContainer(spacing: 16) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 16)], alignment: .leading, spacing: 16) {
-                    content
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .padding(.bottom, 16)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 16)], alignment: .leading, spacing: 16) {
+                content
             }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .padding(.bottom, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background {
             if let backdrop { ArtBackdrop(name: backdrop) }
@@ -110,13 +149,14 @@ struct TileGrid<Content: View>: View {
     }
 }
 
-/// A glass panel for one deck or opponent: the commander's art in a circle, a title, a subtitle
-/// and a line of facts, a warning sign when needed, and a chevron.
-struct GlassTile<Facts: View>: View {
+/// A panel for one deck or opponent: the commander's art in a circle, a title, a subtitle and a line
+/// of facts, a warning sign when needed, and a chevron. A tile is content, so it sits on the regular
+/// material, not on Liquid Glass (HIG, Materials).
+struct ArtTile<Facts: View>: View {
     let art: String
     let title: String
     var subtitle: String?
-    /// Shown as an orange sign, spoken by VoiceOver ("Not legal").
+    /// Shown as a red sign, spoken by VoiceOver ("Not legal"), the same red as a problem `Chip`.
     var warning: String?
     @ViewBuilder let facts: Facts
 
@@ -143,7 +183,7 @@ struct GlassTile<Facts: View>: View {
             Spacer(minLength: 0)
             if let warning {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.red)
                     .accessibilityLabel(warning)
             }
             Image(systemName: "chevron.right")
@@ -152,14 +192,15 @@ struct GlassTile<Facts: View>: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 24))
+        .background(.regularMaterial, in: .rect(cornerRadius: 24))
         .contentShape(.rect(cornerRadius: 24))
         .accessibilityElement(children: .combine)
     }
 }
 
-/// A section heading over the art: bigger and bolder than a list's, so it holds its own on glass.
-struct GlassHeader: View {
+/// A section heading over the art: bigger and bolder than a list's, so it holds its own over the
+/// picture behind it.
+struct SectionTitle: View {
     let text: String
 
     init(_ text: String) { self.text = text }
@@ -173,14 +214,15 @@ struct GlassHeader: View {
 }
 
 extension View {
-    /// A list whose rows sit on frosted panels over a commander's art.
-    func glassList(over commander: String) -> some View {
+    /// A list whose rows sit on the regular material over a commander's art.
+    func artList(over commander: String) -> some View {
         scrollContentBackground(.hidden)
             .background { ArtBackdrop(name: commander) }
     }
 
-    /// One row of a `glassList`.
-    func glassRow() -> some View {
-        listRowBackground(Rectangle().fill(.ultraThinMaterial))
+    /// One row of an `artList`: the regular material, thick enough to keep text readable over any art
+    /// ("Thicker materials … can provide better contrast for text", HIG, Materials).
+    func materialRow() -> some View {
+        listRowBackground(Rectangle().fill(.regularMaterial))
     }
 }

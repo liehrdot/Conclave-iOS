@@ -86,15 +86,23 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   Mana symbols: `ManaText` draws `ManaGlyphs` (circles + the Mana font's glyphs, SVGs in `Assets.xcassets/Mana`,
   OFL licence in `App/Resources/Mana-LICENSE.txt`) inline in a `Text`. `CardImages` caches card pictures on disk
   (`returnCacheDataElseLoad`, 300 MB in Caches).
-  Look (Flo's pick from the variants in draft PR #14): Liquid Glass over the commander's art, `App/Glass.swift`.
-  The Decks tab is `DeckTiles` (glass `DeckTile`s with the commander's art in a circle, the first deck's art blurred
-  behind them via `ArtBackdrop`); a deck's screen is a `glassList(over:)` with a big header (name, commanders,
-  chips, `StatPill`s, glass Rule 0 button), `GlassHeader` sections and `glassRow()` rows with a `CardArt` thumbnail.
+  Look (`App/Look.swift`): the commander's blurred art behind the screens (`ArtBackdrop`, Flo's pick in draft PR #14), with
+  the content on standard materials (`.regularMaterial`) and Liquid Glass only on the floating layer (bars, sheets, the outbox
+  pill, controls over the camera), as Apple's guidelines ask (Flo's decision 2026-10-26; the doc with the sources:
+  https://claude.ai/artifact/KBeA2toTQ6YPCAS32i1rpW). The Decks tab is a `TileGrid` of `ArtTile`s (the commander's art in a
+  circle, on the material, the first deck's art blurred behind them); a deck's screen is an `artList(over:)` with a big header
+  (name, commanders, chips, `StatPill`s, one prominent "Log a Game" + glass Rule 0 button), `SectionTitle` headers and
+  `materialRow()` rows with a `CardArt` thumbnail.
   `CardArt` = a card's art crop from `CardLibrary` + `CardImages`; the Decks tab prefetches all commanders at once.
-  Shared: `TileGrid` (tiles over a backdrop, columns on the iPad) + `GlassTile` (art circle, title, facts) for the Decks
+  Shared: `TileGrid` (tiles over a backdrop, columns on the iPad) + `ArtTile` for the Decks
   and Opponents tabs; the opponent screen, Rule 0 and the card sheet sit over their commander's or card's art too.
   Settings stays a plain iOS form on purpose (it's a utility sheet, like the iPhone's own Settings).
-  Colours: `AccentColor` = dark green in light mode, neon in dark (text, icons); `Neon` = fills, always with black text.
+  Colours (HIG, Color): `AccentColor` = dark green in light mode, neon in dark, each with an Increase Contrast variant; it marks
+  what you can tap (text, icons, picked choices) and is the background of the one prominent button per screen
+  (`.glassProminent`/`.borderedProminent`), whose label is `OnAccent` (white on the dark green, black on the neon). Every
+  custom colour has light, dark and high-contrast values; text colours reach 4.5:1. `Chip` = a label on the material: a
+  bracket's dot goes blue › teal › yellow › orange › red in system colours (`Chip.tone`; never green, that's the accent), a
+  problem gets a red sign; the words always say it too. Mana pips keep Magic's own colours (content, like the art).
 - `Packages/ConclaveCore/Tests/ConclaveCoreTests/Resources/ops.json`: Conclave's shared operation cases
   (`docs/app-api.md` there), copied at the commit in `ops.rev` by `scripts/update_api_cases.sh <full hash>`.
   Re-run it when Conclave's `appops.py` changes; the core's operation code must pass every case.
@@ -111,3 +119,6 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
 - The macOS jobs are pinned to `macos-26` and Xcode 26.6 (`XCODE` in `ci.yml` and `codeql.yml`): CodeQL can't read Swift
   built with Xcode 27, and Xcode 27 changes the app's look (iOS 27 glass). Move to it only on purpose, in both files.
 - No third-party UI libraries; add a dependency only where Apple has nothing.
+- Follow Apple's Human Interface Guidelines and read the page before deciding (the JSON behind every page:
+  `https://developer.apple.com/tutorials/data/design/human-interface-guidelines/<page>.json`). No `.glassEffect` on
+  content (tiles, rows, pills, panels): standard materials there; colour goes on the background of the one main button.

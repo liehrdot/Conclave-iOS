@@ -2,7 +2,7 @@ import ConclaveCore
 import SwiftUI
 
 /// The Opponents tab: the decks played against, most recent first, with the record against each.
-/// Glass tiles over the first opponent's art, like the Decks tab.
+/// Tiles over the first opponent's art, like the Decks tab.
 struct OpponentsView: View {
     let device: Device
     @Environment(AppModel.self) private var model
@@ -52,7 +52,7 @@ struct OpponentTile: View {
     private var commanders: String { opponent.commanders.joined(separator: " + ") }
 
     var body: some View {
-        GlassTile(art: opponent.commanders.first ?? "", title: opponent.title,
+        ArtTile(art: opponent.commanders.first ?? "", title: opponent.title,
                   subtitle: opponent.title == commanders ? nil : commanders) {
             ColorPips(colors: opponent.colors ?? "")
             if let player = opponent.player, !player.isEmpty { Text(player) }
@@ -88,10 +88,10 @@ struct OpponentView: View {
                 Section {
                     ForEach(opponent.record.perDeck, id: \.name) { deck in
                         LabeledContent(deck.name, value: recordText(wins: deck.wins, losses: deck.losses, draws: 0))
-                            .glassRow()
+                            .materialRow()
                     }
                 } header: {
-                    GlassHeader("Your Decks Against It")
+                    SectionTitle("Your Decks Against It")
                 }
             }
 
@@ -101,9 +101,9 @@ struct OpponentView: View {
                     ChoiceChips(title: "Tap to change", choices: tags, picked: opponent.tags) { tag in
                         Task { await model.save("opponent.update", OpponentEdit.toggle(tag, on: opponent)) }
                     }
-                    .glassRow()
+                    .materialRow()
                 } header: {
-                    GlassHeader("What It Does")
+                    SectionTitle("What It Does")
                 }
             }
 
@@ -115,7 +115,7 @@ struct OpponentView: View {
                         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         .contentShape(.rect)
                 }
-                .glassRow()
+                .materialRow()
                 ForEach(opponent.notes) { note in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(note.text)
@@ -125,13 +125,13 @@ struct OpponentView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .glassRow()
+                    .materialRow()
                 }
             } header: {
-                GlassHeader("Notes")
+                SectionTitle("Notes")
             }
         }
-        .glassList(over: opponent.commanders.first ?? "")
+        .artList(over: opponent.commanders.first ?? "")
         .navigationTitle(opponent.title)
         .navigationBarTitleDisplayMode(.inline) // the header shows the name big
         .refreshable { await model.refresh() }
@@ -148,7 +148,7 @@ struct OpponentView: View {
         opponent.commanders.count == 1 && opponent.title == opponent.commanders[0]
     }
 
-    /// The name, the commanders to tap, who plays it, what it does and your record as glass pills.
+    /// The name, the commanders to tap, who plays it, what it does and your record as panels.
     private var header: some View {
         VStack(alignment: .leading, spacing: 14) {
             if namedAfterCommander, let commander = opponent.commanders.first {
@@ -193,20 +193,19 @@ struct OpponentView: View {
             }
             HStack(spacing: 8) {
                 ColorPips(colors: opponent.colors ?? "")
-                if let bracket = opponent.bracket { Chip(text: "Bracket \(bracket)") }
+                if let bracket = opponent.bracket { Chip.bracket(bracket) }
                 if let player = opponent.player, !player.isEmpty {
                     Text("Played by \(player)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
-            GlassEffectContainer(spacing: 8) {
-                HStack(spacing: 8) {
-                    StatPill(label: "Games", value: "\(opponent.record.games)")
-                    StatPill(label: "Won – lost", value: opponent.record.games == 0 ? "–"
-                             : recordText(wins: opponent.record.wins, losses: opponent.record.losses, draws: opponent.record.draws))
-                }
+            HStack(spacing: 8) {
+                StatPill(label: "Games", value: "\(opponent.record.games)")
+                StatPill(label: "Won – lost", value: opponent.record.games == 0 ? "–"
+                         : recordText(wins: opponent.record.wins, losses: opponent.record.losses, draws: opponent.record.draws))
             }
+            .fixedSize(horizontal: false, vertical: true) // the panels share the tallest one's height
             if let last = ReadModel.date(opponent.record.last) {
                 Text("Last played \(last, format: .relative(presentation: .named))")
                     .font(.footnote)

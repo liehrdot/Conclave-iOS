@@ -44,15 +44,15 @@ struct LogGameView: View {
                                 }
                             }
                         }
-                        .glassRow()
+                        .materialRow()
                         .swipeActions { Button("Remove", role: .destructive) { draft.removeSeat(at: index) } }
                     }
                     if draft.seats.count < GameDraft.maxOpponents {
                         Button("Add Opponent", systemImage: "plus") { picking = true }
-                            .glassRow()
+                            .materialRow()
                     }
                 } header: {
-                    GlassHeader("Opponents")
+                    SectionTitle("Opponents")
                 } footer: {
                     if draft.rematch { Text("The same table as your last game. Swipe to remove someone.") }
                 }
@@ -62,15 +62,15 @@ struct LogGameView: View {
                         PlaceRow(name: "You", art: deck.commanders.first ?? "", place: draft.place, of: draft.tableSize) {
                             draft.setPlace($0)
                         }
-                        .glassRow()
+                        .materialRow()
                         ForEach(Array(draft.seats.enumerated()), id: \.element.id) { index, seat in
                             PlaceRow(name: name(of: seat), art: seat.commander, place: seat.place, of: draft.tableSize) {
                                 draft.setPlace($0, seat: index)
                             }
-                            .glassRow()
+                            .materialRow()
                         }
                     } header: {
-                        GlassHeader("Places")
+                        SectionTitle("Places")
                     } footer: {
                         Text("Optional. Tap a place again to clear it.")
                     }
@@ -95,10 +95,10 @@ struct LogGameView: View {
                         TextField("Note", text: $draft.note, prompt: Text("What stood out?"), axis: .vertical)
                             .lineLimit(2...6)
                     }
-                    .glassRow()
+                    .materialRow()
                 }
             }
-            .glassList(over: deck.commanders.first ?? "")
+            .artList(over: deck.commanders.first ?? "")
             .navigationTitle("Log a Game")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -366,7 +366,7 @@ enum Picked {
 }
 
 /// Gold, silver and bronze for places 1 to 3, with black numbers on them; places 4 to 6 use `Picked`.
-/// Muted metal tones, a touch darker in light mode so they still stand out on the pale glass.
+/// Muted metal tones, a touch darker in light mode so they still stand out on the pale material.
 private enum Medal {
     case gold, silver, bronze
 
@@ -380,11 +380,12 @@ private enum Medal {
         }
     }
 
-    /// For text in the metal's colour (the "Winner" label): darker in light mode to be readable.
+    /// For text in the metal's colour (the "Winner" label): darker in light mode, at least 4.5:1 on the light
+    /// backgrounds (HIG, Accessibility).
     var text: Color {
         switch self {
-        case .gold: Color(light: 0x9A7414, dark: 0xE3C46A)
-        case .silver: Color(light: 0x6B737C, dark: 0xC9CED6)
+        case .gold: Color(light: 0x7A5C0E, dark: 0xE3C46A)
+        case .silver: Color(light: 0x5F666E, dark: 0xC9CED6)
         case .bronze: Color(light: 0x8F5A2E, dark: 0xD49A6A)
         }
     }
