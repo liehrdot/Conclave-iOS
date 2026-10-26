@@ -97,7 +97,7 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   language's printing), place, copies; Original/Proxy and the place are remembered in `AppStorage` `addProxy`/`addPlace`/`addDeck`)
   and the search tab Cards (`CardsView`, `Tab(role: .search)`:
   `.searchable`, `find(name:)` 300 ms after typing pauses, rows with `CardArt`, the last 12 opened in `AppStorage` `recentCards`, tap › `CardSheet`; "Filters" in the top bar › `FilterSheet` (with a filter the name search is one paged `Scryfall.search`, without a name
-  the most played cards that fit; `FilterSummary` row above the results); a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
+  the most played cards that fit; `FiltersRow` (shared with the Collection tab: a plain line, words in the label colour) above the results); a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
   `Server.describe` › `Scryfall.search` with "Show More", the broader query when nothing matched, the query shown; 409 › `AISetupView` (also in
   Settings › "Search by Description": key as `SecureField`, model picker, sends only what changed); not in the demo); the outbox's status (`App/OutboxStatus.swift`): on the iPhone from iOS 26.1 the
   tab bar's bottom accessory (`.outboxAccessory()` on the `TabView`, `tabViewBottomAccessory(isEnabled:)`, shown only while

@@ -148,11 +148,12 @@ struct CollectionView: View {
 }
 
 /// The filters in words (tap to change them) and "Clear": the icon and the button in the accent colour, as
-/// they can be tapped, the words in the normal label colour so they're easy to read (HIG, Color).
-private struct FiltersRow: View {
+/// they can be tapped, the words in the normal label colour so they're easy to read (HIG, Color). Used by the
+/// Collection and Cards tabs.
+struct FiltersRow: View {
     let text: String
     /// The cards' colours and types are still being looked up.
-    let loading: Bool
+    var loading = false
     let edit: () -> Void
     let clear: () -> Void
 

@@ -83,7 +83,10 @@ struct CardsView: View {
         List {
             if !filter.isEmpty {
                 Section {
-                    FilterSummary(filter: filter, edit: { filtering = true }, clear: { withAnimation { filter = CardFilter() } })
+                    FiltersRow(text: FilterSummary.text(filter), edit: { filtering = true }) { withAnimation { filter = CardFilter() } }
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 }
             }
             if idle {
@@ -247,12 +250,9 @@ struct SearchRow: View {
 }
 
 /// The filters in use, one line above the results: a tap changes them, the x clears them.
-private struct FilterSummary: View {
-    let filter: CardFilter
-    let edit: () -> Void
-    let clear: () -> Void
-
-    private var text: String {
+/// The Cards tab's filters in words, for `FiltersRow`.
+private enum FilterSummary {
+    static func text(_ filter: CardFilter) -> String {
         var parts: [String] = []
         if let role = CardFilter.roles.first(where: { $0.key == filter.role }) { parts.append(role.label) }
         let colors = DescribeSearch.colorChoices.filter { filter.colors.contains($0.key) }.map(\.label)
@@ -260,25 +260,6 @@ private struct FilterSummary: View {
         let types = DescribeSearch.typeChoices.filter { filter.types.contains($0.key) }.map(\.label)
         if !types.isEmpty { parts.append(types.formatted(.list(type: .or))) }
         return parts.joined(separator: " · ")
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: edit) {
-                Label(text, systemImage: "line.3.horizontal.decrease")
-                    .foregroundStyle(Color.accentColor)
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Changes the filters")
-            Button("Clear Filters", systemImage: "xmark.circle.fill", action: clear)
-                .labelStyle(.iconOnly)
-                .foregroundStyle(.secondary)
-                .frame(minWidth: 44, minHeight: 44)
-                .buttonStyle(.plain)
-        }
-        .materialRow()
     }
 }
 
