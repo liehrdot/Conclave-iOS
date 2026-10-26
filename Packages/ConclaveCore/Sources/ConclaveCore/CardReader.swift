@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
@@ -25,16 +28,18 @@ public struct ReadLine: Equatable, Sendable {
     /// A line the camera found at `points` (its corners, in the screen's points), placed in the card frame
     /// `frame` on the same screen. A tilted line gets the box around its corners.
     public init(_ text: String, points: [CGPoint], frame: CGRect) {
-        let xs = points.map(\.x), ys = points.map(\.y)
-        let minX = xs.min() ?? 0, minY = ys.min() ?? 0
-        let w = max(frame.width, 1), h = max(frame.height, 1)
-        self.init(text, x: Double((minX - frame.minX) / w), y: Double((minY - frame.minY) / h),
-                  width: Double(((xs.max() ?? 0) - minX) / w), height: Double(((ys.max() ?? 0) - minY) / h))
+        let xs: [Double] = points.map { Double($0.x) }, ys: [Double] = points.map { Double($0.y) }
+        let minX: Double = xs.min() ?? 0, minY: Double = ys.min() ?? 0
+        let maxX: Double = xs.max() ?? 0, maxY: Double = ys.max() ?? 0
+        let left = Double(frame.minX), top = Double(frame.minY)
+        let w: Double = max(Double(frame.width), 1), h: Double = max(Double(frame.height), 1)
+        self.init(text, x: (minX - left) / w, y: (minY - top) / h, width: (maxX - minX) / w, height: (maxY - minY) / h)
     }
 
     /// Where the line is on the screen again, for the overlay.
     public func rect(in frame: CGRect) -> CGRect {
-        CGRect(x: frame.minX + x * frame.width, y: frame.minY + y * frame.height, width: width * frame.width, height: height * frame.height)
+        let w = Double(frame.width), h = Double(frame.height)
+        return CGRect(x: Double(frame.minX) + x * w, y: Double(frame.minY) + y * h, width: width * w, height: height * h)
     }
 }
 
@@ -44,10 +49,11 @@ public enum CardFrame {
     public static let aspect = 63.0 / 88.0
 
     public static func rect(in size: CGSize, top: Double = 0, bottom: Double = 0) -> CGRect {
-        let room = max(size.height - top - bottom, 1)
-        let width = min(size.width * 0.84, room * 0.86 * aspect)
-        let height = width / aspect
-        return CGRect(x: (size.width - width) / 2, y: top + (room - height) * 0.45, width: width, height: height)
+        let screenWidth = Double(size.width), screenHeight = Double(size.height)
+        let room: Double = max(screenHeight - top - bottom, 1)
+        let width: Double = min(screenWidth * 0.84, room * 0.86 * aspect)
+        let height: Double = width / aspect
+        return CGRect(x: (screenWidth - width) / 2, y: top + (room - height) * 0.45, width: width, height: height)
     }
 }
 
