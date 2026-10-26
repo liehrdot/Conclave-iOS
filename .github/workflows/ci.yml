@@ -80,3 +80,28 @@ jobs:
           name: screenshots
           path: screenshots
           retention-days: 14
+
+  # the app icon as iOS draws it, in every appearance, and on the Home Screen: the "icon" artifact
+  icon:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Use Xcode ${{ env.XCODE }}
+        run: |
+          sudo xcode-select -s "/Applications/Xcode_${XCODE}.app"
+          xcodebuild -version
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - name: Build for the simulator
+        run: >
+          xcodebuild build
+          -project Conclave.xcodeproj -scheme Conclave -configuration Debug
+          -sdk iphonesimulator -destination "generic/platform=iOS Simulator" -derivedDataPath build
+          CODE_SIGNING_ALLOWED=NO
+      - run: scripts/icon.sh build/Build/Products/Debug-iphonesimulator/Conclave.app icon
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: icon
+          path: icon
+          retention-days: 14
