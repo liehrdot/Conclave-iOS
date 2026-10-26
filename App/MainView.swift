@@ -30,6 +30,7 @@ struct MainView: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable) // a sidebar on the iPad, a tab bar on the iPhone
+        .outboxAccessory()
     }
 }
 
