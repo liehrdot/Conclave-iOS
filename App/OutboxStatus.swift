@@ -2,16 +2,64 @@ import ConclaveCore
 import SwiftUI
 
 extension View {
-    /// The outbox's line at the bottom of a tab, above the tab bar: the toast with "Undo" right after a
-    /// save, else the changes the server refused, else a quiet note that changes wait to be sent.
-    /// Mirrors the PWA's toast with "Rückgängig" and its quiet status line (`screens.js`).
+    /// The outbox's line under a tab's content on the iPad, and on the iPhone before iOS 26.1: the
+    /// toast with "Undo" right after a save, else the changes the server refused, else a quiet note
+    /// that changes wait to be sent, as a pill on the floating layer above the tab bar. Mirrors the
+    /// PWA's toast with "Rückgängig" and its quiet status line (`screens.js`).
     func outboxStatus() -> some View {
-        safeAreaInset(edge: .bottom) { OutboxStatus() }
+        modifier(OutboxPill())
+    }
+
+    /// The same line on the iPhone from iOS 26.1 on, as the tab bar's bottom accessory: Apple's place
+    /// for a status that belongs to the whole app, like the Music app's player (HIG, Tab bars). The
+    /// system draws the glass and the size, and hides it while there's nothing to say.
+    func outboxAccessory() -> some View {
+        modifier(OutboxAccessory())
     }
 }
 
-private struct OutboxStatus: View {
+/// Whether this device shows the status as the tab bar's accessory. The iPad keeps the pill: its tab
+/// bar sits at the top, and an accessory bar would sit away from the content it reports on.
+@MainActor
+private var usesAccessory: Bool {
+    guard #available(iOS 26.1, *) else { return false }
+    return UIDevice.current.userInterfaceIdiom == .phone
+}
+
+private struct OutboxPill: ViewModifier {
+    func body(content: Content) -> some View {
+        if usesAccessory {
+            content
+        } else {
+            content.safeAreaInset(edge: .bottom) { OutboxStatus(inAccessory: false) }
+        }
+    }
+}
+
+private struct OutboxAccessory: ViewModifier {
     @Environment(AppModel.self) private var model
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.1, *) {
+            content.tabViewBottomAccessory(isEnabled: usesAccessory && model.hasOutboxStatus) {
+                OutboxStatus(inAccessory: true)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension AppModel {
+    /// Whether the outbox has anything to say: a fresh save, refused changes or changes waiting.
+    var hasOutboxStatus: Bool { saved != nil || !refused.isEmpty || !waiting.isEmpty }
+}
+
+private struct OutboxStatus: View {
+    /// In the tab bar's accessory the system draws the glass and sets the height; else it's our own pill.
+    let inAccessory: Bool
+    @Environment(AppModel.self) private var model
+    @Environment(\.tabViewBottomAccessoryPlacement) private var placement
     @State private var showingRefused = false
     /// How long the toast stays (the PWA's is a few seconds too).
     private static let toastFor: Duration = .seconds(6)
@@ -23,11 +71,21 @@ private struct OutboxStatus: View {
                     Label(saved.text, systemImage: "checkmark.circle.fill")
                         .labelStyle(Tinted(color: Color.accentColor))
                     Spacer(minLength: 8)
-                    Button { Task { await model.undo(saved.op) } } label: {
-                        Text("Undo").font(.body.weight(.semibold)).padding(.horizontal, 10).frame(minHeight: 44)
+                    if inAccessory {
+                        // the accessory is barely taller than a 44 pt button, so a filled button fills it edge to
+                        // edge; plain accent text instead, like the Music player's controls, with the same 44 pt to hit
+                        Button { Task { await model.undo(saved.op) } } label: {
+                            Text("Undo").font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
+                                .padding(.horizontal, 8).frame(minHeight: 44).contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Button { Task { await model.undo(saved.op) } } label: {
+                            Text("Undo").font(.body.weight(.semibold)).padding(.horizontal, 10).frame(minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .buttonBorderShape(.capsule)
                     }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
                 }
                 .task(id: saved.id) {
                     try? await Task.sleep(for: Self.toastFor)
@@ -38,7 +96,7 @@ private struct OutboxStatus: View {
                     showingRefused = true
                 } label: {
                     pill {
-                        Label(count(model.refused.count, "change wasn't saved", "changes weren't saved"),
+                        Label(count(model.refused.count, "change wasn't saved", "changes weren't saved", short: "not saved"),
                               systemImage: "exclamationmark.triangle.fill")
                             .labelStyle(Tinted(color: .orange))
                         Spacer(minLength: 8)
@@ -52,7 +110,8 @@ private struct OutboxStatus: View {
                     Task { await model.send(force: true) }
                 } label: {
                     pill {
-                        Label(count(model.waiting.count, "change waiting to be sent", "changes waiting to be sent"),
+                        Label(count(model.waiting.count, "change waiting to be sent", "changes waiting to be sent",
+                                    short: "waiting"),
                               systemImage: "clock")
                             .foregroundStyle(.secondary)
                         Spacer(minLength: 0)
@@ -67,26 +126,40 @@ private struct OutboxStatus: View {
         .sheet(isPresented: $showingRefused) { RefusedChanges() }
     }
 
+    @ViewBuilder
     private func pill<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        HStack(spacing: 12, content: content)
-            .font(.body)
-            .lineLimit(1)
-            // an even margin around the Undo button, so the pill is clearly bigger than it
-            .padding(.leading, 20)
-            .padding(.trailing, 10)
-            .padding(.vertical, 10)
-            .frame(minHeight: 64)
-            .glassEffect(.regular, in: .capsule)
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            // the gaps around the pill catch taps too, so a near miss never opens the card beneath it
-            .contentShape(.rect)
-            .onTapGesture {}
-            .transition(.move(edge: .bottom).combined(with: .opacity))
+        if inAccessory {
+            HStack(spacing: 12, content: content)
+                // two lines of the smaller text fit the accessory's height, so a long deck name isn't cut off
+                .font(.subheadline)
+                .lineLimit(2)
+                .padding(.leading, 16)
+                .padding(.trailing, 8)
+                .frame(maxHeight: .infinity)
+                .contentShape(.rect)
+        } else {
+            HStack(spacing: 12, content: content)
+                .font(.body)
+                .lineLimit(1)
+                // an even margin around the Undo button, so the pill is clearly bigger than it
+                .padding(.leading, 20)
+                .padding(.trailing, 10)
+                .padding(.vertical, 10)
+                .frame(minHeight: 64)
+                .glassEffect(.regular, in: .capsule)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                // the gaps around the pill catch taps too, so a near miss never opens the card beneath it
+                .contentShape(.rect)
+                .onTapGesture {}
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
 
-    private func count(_ number: Int, _ one: String, _ many: String) -> String {
-        number == 1 ? "1 \(one)" : "\(number) \(many)"
+    /// "3 changes waiting to be sent"; inline next to a minimized tab bar there's only room for "3 waiting".
+    private func count(_ number: Int, _ one: String, _ many: String, short: String) -> String {
+        if inAccessory, placement == .inline { return "\(number) \(short)" }
+        return number == 1 ? "1 \(one)" : "\(number) \(many)"
     }
 }
 

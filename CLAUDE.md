@@ -71,8 +71,10 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   `.searchable`, `find(name:)` 300 ms after typing pauses, rows with `CardArt`, the last 12 opened in `AppStorage` `recentCards`, tap › `CardSheet`; "Filters" in the top bar › `FilterSheet` (with a filter the name search is one paged `Scryfall.search`, without a name
   the most played cards that fit; `FilterSummary` row above the results); a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
   `Server.describe` › `Scryfall.search` with "Show More", the broader query when nothing matched, the query shown; 409 › `AISetupView` (also in
-  Settings › "Search by Description": key as `SecureField`, model picker, sends only what changed); not in the demo); both tabs carry `.outboxStatus()` (`App/OutboxStatus.swift`: a glass pill above the tab
-  bar = the "… saved" toast with "Undo" for 6 s, else "N changes weren't saved" › `RefusedChanges` sheet, else a quiet
+  Settings › "Search by Description": key as `SecureField`, model picker, sends only what changed); not in the demo); the outbox's status (`App/OutboxStatus.swift`): on the iPhone from iOS 26.1 the
+  tab bar's bottom accessory (`.outboxAccessory()` on the `TabView`, `tabViewBottomAccessory(isEnabled:)`, shown only while
+  `hasOutboxStatus`, short text when `.inline`), else (iPad, iOS 26.0) a glass pill above the tab bar (`.outboxStatus()` on the
+  Decks and Opponents tabs) = the "… saved" toast with "Undo" for 6 s, else "N changes weren't saved" › `RefusedChanges` sheet, else a quiet
   "N changes waiting to be sent" that sends on a tap; never "waiting" in the demo), `SettingsView` from the gear (a short list like the iPhone's Settings: Connection row › `ConnectionView` (server, this
   device, last update, "Your PCs" from `AppModel.loadStatus()` = `GET /api/app/status`, `ServerStatus.PC.lastSeen(now:)` on the
   server's clock), "Open the Web App", About Conclave › `AboutView` (version, source, Scryfall, Mana, Fan Content Policy), Sign Out).
