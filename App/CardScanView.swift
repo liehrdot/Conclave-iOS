@@ -78,7 +78,8 @@ struct CardScanView: View {
             if allowed == true {
                 Label(status.text, systemImage: status.symbol)
                     .font(.callout.weight(.medium))
-                    .contentTransition(.opacity)
+                    .lineLimit(1)
+                    .contentTransition(.identity) // the words swap at once; a cross-fade of two sentences overlaps
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .glassEffect(.regular.tint(status.isFound ? Color.accentColor.opacity(0.5) : nil), in: .capsule)

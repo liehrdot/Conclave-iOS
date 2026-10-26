@@ -76,8 +76,9 @@ public struct SetLine: Equatable, Sendable {
                             "JA": "ja", "KO": "ko", "RU": "ru", "CS": "zhs", "CT": "zht", "PH": "ph"]
 
     /// "0123 R\nMKM • DE ✒ Artist" → mkm #123 de. The set code is 3–5 letters and digits with at least one
-    /// letter, then a language code; the number is the digits before it (or "123/280" after it on older
-    /// cards), leading zeros gone. Mirrors `parseLine()` in `scan.js`.
+    /// letter, then a language code; the number is the digits closest before it (or "123/280" after it on
+    /// older cards), leading zeros gone. Mirrors `parseLine()` in `scan.js`, except that it takes the closest
+    /// number, not the first: a power/toughness read above the set line ("12/12") isn't the number.
     public static func parse(_ text: String) -> SetLine? {
         let t = text.uppercased().replacingOccurrences(of: "|", with: "I")
         let codes = languages.keys.joined(separator: "|")
@@ -89,15 +90,15 @@ public struct SetLine: Equatable, Sendable {
         let set = String(t[setRange])
         guard set.contains(where: \.isLetter) else { return nil }
         let before = String(t[..<whole.lowerBound]), after = String(t[whole.upperBound...])
-        let number = firstNumber(before, #"\b0*(\d{1,4})(?:\s*/\s*\d{1,4})?\b"#)
-            ?? firstNumber(after, #"\b0*(\d{1,4})\s*/\s*\d{1,4}\b"#) ?? ""
+        let number = number(before, #"\b0*(\d{1,4})(?:\s*/\s*\d{1,4})?\b"#, last: true)
+            ?? number(after, #"\b0*(\d{1,4})\s*/\s*\d{1,4}\b"#, last: false) ?? ""
         return SetLine(set: set.lowercased(), number: number, lang: languages[String(t[langRange])] ?? "en")
     }
 
-    private static func firstNumber(_ text: String, _ pattern: String) -> String? {
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let m = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-              let range = Range(m.range(at: 1), in: text) else { return nil }
+    private static func number(_ text: String, _ pattern: String, last: Bool) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+        guard let m = last ? matches.last : matches.first, let range = Range(m.range(at: 1), in: text) else { return nil }
         return String(text[range])
     }
 }
@@ -139,7 +140,7 @@ public struct CardRead: Equatable, Sendable {
             names.append(name)
             if nameLine == nil { nameLine = line }
         }
-        let bottom = ordered.filter { Self.bottom.contains($0.midY) && $0.x < 0.75 }
+        let bottom = ordered.filter { Self.bottom.contains($0.midY) && $0.x < 0.75 && !Self.isPowerToughness($0.text) }
         let set = SetLine.parse(bottom.map(\.text).joined(separator: "\n"))
         let setLine = set.flatMap { found in bottom.first { $0.text.uppercased().contains(found.set.uppercased()) } }
         self.init(names: Array(names.prefix(4)), line: set, nameLine: nameLine, setLine: setLine)
@@ -157,6 +158,12 @@ public struct CardRead: Equatable, Sendable {
         while let first = words.first, !hasLetters(first, 2) { words.removeFirst() }
         while let last = words.last, !hasLetters(last, 2) { words.removeLast() }
         return words.joined(separator: " ").trimmingCharacters(in: CharacterSet(charactersIn: ",'-")).trimmingCharacters(in: .whitespaces)
+    }
+
+    /// "12/12", "*/*", "1/1+": the power/toughness box, which sits right above the set line and looks like an
+    /// old collector number. A real old number has its rarity letter next to it ("123/280 R").
+    static func isPowerToughness(_ text: String) -> Bool {
+        text.trimmingCharacters(in: .whitespaces).range(of: #"^[\dX*+]{1,3}\s*/\s*[\dX*+]{1,3}$"#, options: .regularExpression) != nil
     }
 
     static func hasLetters(_ text: String, _ count: Int) -> Bool {
@@ -319,6 +326,9 @@ public actor CardReader {
 /// `tick()` loop in `scan.js`.
 public struct ScanSteadiness: Equatable, Sendable {
     private var last: String?
+    /// The card the last name-read hit showed (its Oracle id), while the card stays in the frame: a hit by
+    /// the set line alone that says otherwise is a misread number, not a new card.
+    private var named: String?
     /// The card added last (its Oracle id); nil once the card left the frame.
     public private(set) var ignored: String?
 
@@ -338,9 +348,15 @@ public struct ScanSteadiness: Equatable, Sendable {
     public mutating func next(_ read: CardRead, _ hit: ReadHit?) -> Outcome {
         if read.isEmpty {
             ignored = nil  // the card left the frame: the same card may come again
+            named = nil
             return .nothing
         }
         guard let hit else { return .nothing }
+        if hit.read.isEmpty {
+            if let named, named != hit.printing.oracleID { return .nothing }
+        } else {
+            named = hit.printing.oracleID
+        }
         if hit.printing.oracleID == ignored { return .alreadyAdded }
         if hit.sure || last == hit.printing.id {
             last = nil

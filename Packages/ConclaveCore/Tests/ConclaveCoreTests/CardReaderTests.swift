@@ -18,6 +18,22 @@ import Testing
         #expect(SetLine.parse("M20 • EN\n045/280 C") == SetLine(set: "m20", number: "45", lang: "en"))  // the number after it
     }
 
+    @Test func theNumberClosestToTheSetCodeWins() {
+        // Ghalta's 12/12 read above the set line, with the box's left edge in the left part
+        #expect(SetLine.parse("12/12\nM 0008\nFDC • EN ✒ Raph Lomotan") == SetLine(set: "fdc", number: "8", lang: "en"))
+    }
+
+    @Test func powerAndToughnessAreNotTheSetLine() {
+        #expect(CardRead.isPowerToughness("12/12") && CardRead.isPowerToughness(" */* ") && CardRead.isPowerToughness("1/1+"))
+        #expect(!CardRead.isPowerToughness("123/280 R") && !CardRead.isPowerToughness("M 0008"))
+        let read = CardRead([
+            ReadLine("Ghalta, Primal Hunger", y: 0.05),
+            ReadLine("12/12", x: 0.7, y: 0.86, width: 0.12, height: 0.03),
+            ReadLine("FDC • EN Raph Lomotan", x: 0.05, y: 0.93, width: 0.3, height: 0.02),
+        ])
+        #expect(read.line == SetLine(set: "fdc", lang: "en"))
+    }
+
     @Test func noSetLine() {
         #expect(SetLine.parse("Tap: Add two mana") == nil)
         #expect(SetLine.parse("123 EN") == nil)  // a set code has a letter
@@ -203,7 +219,21 @@ import Testing
         #expect(steady.next(read, weak) == .maybe(Self.elves))
         #expect(steady.next(read, weak) == .found(Self.elves))
         #expect(steady.next(read, nil) == .nothing)
+        #expect(steady.next(CardRead(), nil) == .nothing)  // the card left; the next one is read by its set line
         #expect(steady.next(read, ReadHit(printing: Self.fight, sure: true, bySet: true, read: "")) == .found(Self.fight))
+    }
+
+    @Test func theSetLineAloneDoesNotOverruleTheName() {
+        var steady = ScanSteadiness()
+        let read = CardRead(names: ["Llanowar Elves"])
+        #expect(steady.next(read, ReadHit(printing: Self.elves, sure: false, bySet: false, read: "Llanowar Elves")) == .maybe(Self.elves))
+        // the next frames read no name and a misread number: still the same card in the frame
+        let misread = ReadHit(printing: Self.fight, sure: false, bySet: true, read: "")
+        #expect(steady.next(CardRead(line: SetLine(set: "mh3", number: "99")), misread) == .nothing)
+        #expect(steady.next(CardRead(line: SetLine(set: "mh3", number: "99")), misread) == .nothing)
+        // once the frame was empty, the set line counts again
+        #expect(steady.next(CardRead(), nil) == .nothing)
+        #expect(steady.next(CardRead(line: SetLine(set: "mh3", number: "99")), misread) == .maybe(Self.fight))
     }
 
     @Test func theCardJustAddedWaitsForAnEmptyFrame() {
