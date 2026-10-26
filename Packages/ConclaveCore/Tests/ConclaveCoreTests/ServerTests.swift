@@ -14,6 +14,7 @@ final class FakeTransport: Transport, @unchecked Sendable {
     var failure: (any Error)?
 
     init(_ answers: Answer...) { self.answers = answers }
+    init(answers: [Answer]) { self.answers = answers }
 
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         try lock.withLock {

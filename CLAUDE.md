@@ -63,6 +63,10 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   and place), `collectionTotals`, `placeName(of:)`, `knownPlaces` (`collection.js`/`scan.js` `knownPlaces()`), and
   `CollectionEdit` = the Collection tab's `collection.update` payloads (copies, proxy, foil, `move` to a deck or place, `remove`
   with `restore` for "Undo"), like the PWA's `entrySheet()` and `placePage()`.
+  `Printing.swift`: `Printing` = one printing in one language (Scryfall's id, set, number, finishes, prices, printed name);
+  `Scryfall.printing(set:number:lang:)`, `printing(named:set:)` (fuzzy) and `printings(of:anyLanguage:)` mirror `scry.js`
+  `printing()`/`named()`/`prints()`; `CollectionAddDraft` = the add sheet's choices (foil only as far as the printing was made
+  that way, 1…99 copies) and its `collection.add` payload (`addSheet()` + `entryFacts()` in `scan.js`).
   `GameDraft` = the "Log a Game" form's state and rules (`forms.js` game sheet: rematch within 8 h, `setResult`, `setPlace` fills
   the last place and decides win/loss, `payload` = `game.add`). `ReadModelCache.loadJSON()` = the raw saved copy for `Optimistic`.
   `PendingOp.summary(in:)` (`OpSummary`) = a change in a few words ("Loss with Meren") for the toast and the refused list.
@@ -81,7 +85,10 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `StatPill`s, an All/Original/Proxy/Foil filter kept in `AppStorage` `collectionFilter`, `.searchable`, one row per card with
   its printing's picture › `CollectionCardView`: a section per entry with copies (a `Stepper` that saves once the taps pause
   for 700 ms), Proxy and Foil toggles, Place › `PlacePicker`, and "Remove from Collection" without a question, since the toast
-  has "Undo") and the search tab Cards (`CardsView`, `Tab(role: .search)`:
+  has "Undo"; "Add Another" there, "+" on the tab › `AddByNameView` and "Add to Collection" in `CardSheet` open
+  `AddToCollectionView`/`AddToCollectionForm`: printing with "Other Printing", Original/Proxy, Foil, language (swaps to that
+  language's printing), place, copies; Original/Proxy and the place are remembered in `AppStorage` `addProxy`/`addPlace`/`addDeck`)
+  and the search tab Cards (`CardsView`, `Tab(role: .search)`:
   `.searchable`, `find(name:)` 300 ms after typing pauses, rows with `CardArt`, the last 12 opened in `AppStorage` `recentCards`, tap › `CardSheet`; "Filters" in the top bar › `FilterSheet` (with a filter the name search is one paged `Scryfall.search`, without a name
   the most played cards that fit; `FilterSummary` row above the results); a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
   `Server.describe` › `Scryfall.search` with "Show More", the broader query when nothing matched, the query shown; 409 › `AISetupView` (also in

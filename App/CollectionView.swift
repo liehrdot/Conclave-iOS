@@ -10,6 +10,7 @@ struct CollectionView: View {
     @State private var query = ""
     @AppStorage("collectionFilter") private var filter: CollectionFilter = .all
     @State private var path: [String] = AppModel.startScreen == "collection-card" ? ["Birds of Paradise"] : []
+    @State private var adding = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -24,12 +25,16 @@ struct CollectionView: View {
             .navigationTitle("Collection")
             .navigationDestination(for: String.self) { name in CollectionCardView(name: name) }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Add a Card", systemImage: "plus") { adding = true }
+                }
                 ToolbarItem(placement: .topBarTrailing) { SettingsButton(device: device) }
                 if model.inDemo {
                     ToolbarItem(placement: .topBarLeading) { DemoBadge(device: device) }
                 }
             }
         }
+        .sheet(isPresented: $adding) { AddByNameView() }
         .outboxStatus()
     }
 
@@ -148,6 +153,7 @@ struct CollectionCardView: View {
     let name: String
     @Environment(AppModel.self) private var model
     @State private var shownCard: DeckView.ShownCard?
+    @State private var adding = false
 
     private var entries: [CollectionEntry] { model.library?.collection.filter { $0.name == name } ?? [] }
 
@@ -171,6 +177,13 @@ struct CollectionCardView: View {
         .navigationTitle(name)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $shownCard) { shown in CardSheet(name: shown.name, copies: shownCopies, inDeck: false) }
+        .sheet(isPresented: $adding) { AddToCollectionView(name: name) }
+        .toolbar {
+            // another printing, another place: a new entry
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Add Another", systemImage: "plus") { adding = true }
+            }
+        }
     }
 
     /// The copies the card sheet shows: those with a known printing (their picture), then the rest.
@@ -224,7 +237,11 @@ private struct EntrySection: View {
             Toggle("Foil", isOn: Binding(get: { entry.foil }, set: { save(CollectionEdit.foil(entry, $0)) }))
                 .materialRow()
             NavigationLink {
-                PlacePicker(entry: entry)
+                PlacePicker(art: entry.name, place: entry.placeDeck?.isEmpty ?? true ? entry.place ?? "" : "", deck: entry.placeDeck ?? "") {
+                    if let payload = CollectionEdit.move(entry, place: $0, deck: $1, decks: model.library?.decks ?? []) {
+                        Task { await model.save("collection.update", payload) }
+                    }
+                }
             } label: {
                 LabeledContent("Place", value: model.library.map { $0.placeName(of: entry) }.flatMap { $0.isEmpty ? nil : $0 } ?? "None")
             }
@@ -265,10 +282,15 @@ private struct EntrySection: View {
     }
 }
 
-/// Where an entry's copies are: no place, one of the decks, a place already in use, or a new one typed in.
-/// Mirrors `placePage()` in the PWA's `scan.js`.
-private struct PlacePicker: View {
-    let entry: CollectionEntry
+/// Where copies are: no place, one of the decks, a place already in use, or a new one typed in. `onPick`
+/// gets the place text and the deck's slug ("" for none). Mirrors `placePage()` in the PWA's `scan.js`.
+struct PlacePicker: View {
+    /// The card whose art lies behind the list.
+    let art: String
+    /// The place now: a text or a deck's slug.
+    let place: String
+    let deck: String
+    let onPick: (_ place: String, _ deck: String) -> Void
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var text = ""
@@ -277,7 +299,7 @@ private struct PlacePicker: View {
         (model.library?.decks ?? []).sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
-    private var isDeckPlace: Bool { !(entry.placeDeck ?? "").isEmpty }
+    private var isDeckPlace: Bool { !deck.isEmpty }
 
     var body: some View {
         List {
@@ -291,12 +313,12 @@ private struct PlacePicker: View {
                     .materialRow()
             }
             Section {
-                row("No Place", picked: !isDeckPlace && (entry.place ?? "").isEmpty) { pick() }
+                row("No Place", picked: !isDeckPlace && place.isEmpty) { pick() }
             }
             if !decks.isEmpty {
                 Section {
                     ForEach(decks) { deck in
-                        row(deck.name, detail: deck.commanders.joined(separator: " + "), picked: entry.placeDeck == deck.slug) {
+                        row(deck.name, detail: deck.commanders.joined(separator: " + "), picked: self.deck == deck.slug) {
                             pick(deck: deck.slug)
                         }
                     }
@@ -306,10 +328,10 @@ private struct PlacePicker: View {
             }
             if let places = model.library?.knownPlaces, !places.isEmpty {
                 Section {
-                    ForEach(places, id: \.place) { place in
-                        row(place.place, detail: place.cards == 1 ? "1 card" : "\(place.cards) cards",
-                            picked: !isDeckPlace && (entry.place ?? "").lowercased() == place.place.lowercased()) {
-                            pick(place: place.place)
+                    ForEach(places, id: \.place) { known in
+                        row(known.place, detail: known.cards == 1 ? "1 card" : "\(known.cards) cards",
+                            picked: !isDeckPlace && place.lowercased() == known.place.lowercased()) {
+                            pick(place: known.place)
                         }
                     }
                 } header: {
@@ -317,10 +339,10 @@ private struct PlacePicker: View {
                 }
             }
         }
-        .artList(over: entry.name)
+        .artList(over: art)
         .navigationTitle("Place")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { if !isDeckPlace { text = entry.place ?? "" } }
+        .onAppear { text = place }
     }
 
     private func row(_ title: String, detail: String? = nil, picked: Bool, action: @escaping () -> Void) -> some View {
@@ -346,9 +368,7 @@ private struct PlacePicker: View {
     }
 
     private func pick(place: String = "", deck: String = "") {
-        if let payload = CollectionEdit.move(entry, place: place, deck: deck, decks: model.library?.decks ?? []) {
-            Task { await model.save("collection.update", payload) }
-        }
+        onPick(place, deck)
         dismiss()
     }
 }

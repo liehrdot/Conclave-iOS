@@ -182,7 +182,7 @@ public actor Scryfall {
         return decoder
     }()
 
-    private func send(_ request: URLRequest) async throws -> Data {
+    func send(_ request: URLRequest) async throws -> Data {
         var request = request
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Conclave-iOS/1.0", forHTTPHeaderField: "User-Agent")

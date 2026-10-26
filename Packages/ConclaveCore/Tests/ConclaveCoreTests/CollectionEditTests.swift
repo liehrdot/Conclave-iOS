@@ -91,6 +91,15 @@ import Testing
         #expect(try Self.after("collection.update", none).collection.first { $0.id == "c1" }?.place == "")
     }
 
+    @Test func aPickedPlaceIsTidiedOrMeansADeck() throws {
+        let decks = Self.library.decks
+        let name = try #require(decks.first { $0.slug == "meren" }?.name)
+        #expect(CollectionEdit.placed(place: "  Red   Binder ", deck: "", decks: decks) == ("Red Binder", ""))
+        #expect(CollectionEdit.placed(place: name.lowercased(), deck: "", decks: decks) == ("", "meren"))
+        #expect(CollectionEdit.placed(place: "Binder", deck: "meren", decks: decks) == ("", "meren"))
+        #expect(CollectionEdit.placed(place: String(repeating: "x", count: 100), deck: "", decks: []).place.count == 80)
+    }
+
     @Test func movingWhereAnEqualEntryIsMergesThem() throws {
         let library = try ReadModel.decode(Self.merge)
         let kiste = try #require(library.collection.first { $0.id == "c4x" })

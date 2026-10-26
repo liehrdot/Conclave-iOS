@@ -17,6 +17,7 @@ struct CardSheet: View {
     @State private var problem: String?
     @State private var picked = 0
     @State private var turned = false
+    @State private var adding = false
 
     private var copy: CollectionEntry? { copies.indices.contains(picked) ? copies[picked] : copies.first }
 
@@ -69,7 +70,12 @@ struct CardSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Add to Collection", systemImage: "plus.rectangle.on.rectangle") { adding = true }
+                        .disabled(card == nil)
+                }
             }
+            .sheet(isPresented: $adding) { AddToCollectionView(name: card?.name ?? name) }
         }
         .task { await load() }
     }
