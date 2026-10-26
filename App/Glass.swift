@@ -48,9 +48,10 @@ struct ArtBackdrop: View {
     }
 }
 
-/// A small label in a capsule, coloured only where the colour means something (Flo's pick,
-/// 2026-10-26): a bracket is a solid pill that gets warmer as the deck gets stronger, a problem
-/// ("Not legal") is solid red with a warning sign, anything else ("Proxy") is plain glass.
+/// A small glass label in a capsule, the same glass as the rest of the screen, coloured only where the
+/// colour means something (Flo's pick, 2026-10-26, toned down after trying solid pills): a bracket
+/// carries a dot that gets warmer as the deck gets stronger, a problem ("Not legal") a red sign on
+/// red-tinted glass, anything else ("Proxy") is plain glass.
 struct Chip: View {
     enum Kind {
         case plain
@@ -61,44 +62,44 @@ struct Chip: View {
     let text: String
     var kind: Kind = .plain
 
-    /// "Bracket 3" in its colour.
+    /// "Bracket 3" with its dot.
     static func bracket(_ bracket: Int) -> Chip { Chip(text: "Bracket \(bracket)", kind: .bracket(bracket)) }
 
     var body: some View {
-        switch kind {
-        case .plain:
-            label.foregroundStyle(.primary).glassEffect(.regular, in: .capsule)
-        case let .bracket(bracket):
-            let tone = Self.tone(bracket)
-            label.foregroundStyle(tone.text).background(Capsule().fill(tone.fill))
-        case .problem:
-            Label(text, systemImage: "exclamationmark.triangle.fill")
-                .font(.caption.weight(.semibold))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .foregroundStyle(.white)
-                .background(Capsule().fill(Self.red))
+        HStack(spacing: 5) {
+            switch kind {
+            case .plain:
+                EmptyView()
+            case let .bracket(bracket):
+                Circle()
+                    .fill(Self.tone(bracket))
+                    .frame(width: 8, height: 8)
+            case .problem:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+            }
+            Text(text)
         }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.primary)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .glassEffect(glass, in: .capsule)
     }
 
-    private var label: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
+    private var glass: Glass {
+        if case .problem = kind { return .regular.tint(.red.opacity(0.18)) }
+        return .regular
     }
 
-    private static let red = Color(red: 0.84, green: 0.20, blue: 0.18)
-
-    /// Bracket 1 blue, 2 green, 3 yellow, 4 orange, 5 red; each text colour keeps at least 4.5:1
-    /// against its fill, so the pill reads on any art.
-    static func tone(_ bracket: Int) -> (fill: Color, text: Color) {
+    /// Bracket 1 blue, 2 green, 3 yellow, 4 orange, 5 red: the dot's colour.
+    static func tone(_ bracket: Int) -> Color {
         switch bracket {
-        case ...1: (Color(red: 0.16, green: 0.42, blue: 0.80), .white)
-        case 2: (Color(red: 0.13, green: 0.50, blue: 0.27), .white)
-        case 3: (Color(red: 0.98, green: 0.80, blue: 0.20), .black)
-        case 4: (Color(red: 0.97, green: 0.55, blue: 0.16), .black)
-        default: (red, .white)
+        case ...1: Color(red: 0.25, green: 0.53, blue: 0.90)
+        case 2: Color(red: 0.25, green: 0.70, blue: 0.40)
+        case 3: Color(red: 0.96, green: 0.76, blue: 0.20)
+        case 4: Color(red: 0.96, green: 0.52, blue: 0.18)
+        default: Color(red: 0.88, green: 0.25, blue: 0.22)
         }
     }
 }

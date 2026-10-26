@@ -94,7 +94,9 @@ in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the 
   Shared: `TileGrid` (tiles over a backdrop, columns on the iPad) + `GlassTile` (art circle, title, facts) for the Decks
   and Opponents tabs; the opponent screen, Rule 0 and the card sheet sit over their commander's or card's art too.
   Settings stays a plain iOS form on purpose (it's a utility sheet, like the iPhone's own Settings).
-  Colours: `AccentColor` = dark green in light mode, neon in dark (text, icons); `Neon` = fills, always with black text.
+  Colours: `AccentColor` = dark green in light mode, neon in dark (text, icons); `Neon` = fills, always with black text (only the
+  welcome screen's button now: on the glass screens the main button is glass with `AccentColor` text, Flo 2026-10-26).
+  `Chip` = glass pills: a bracket's dot goes blue › red with strength (`Chip.tone`), a problem gets a red sign on red-tinted glass.
 - `Packages/ConclaveCore/Tests/ConclaveCoreTests/Resources/ops.json`: Conclave's shared operation cases
   (`docs/app-api.md` there), copied at the commit in `ops.rev` by `scripts/update_api_cases.sh <full hash>`.
   Re-run it when Conclave's `appops.py` changes; the core's operation code must pass every case.

@@ -50,19 +50,18 @@ struct DescribeSearch: View {
             }
 
             Section {
-                // the one green button on the screen
+                // glass with green text, like "Log a Game": the main button without a neon fill
                 Button {
                     Task { await find() }
                 } label: {
                     Group {
-                        if busy { ProgressView().tint(.black) } else { Label("Find Cards", systemImage: "sparkle.magnifyingglass") }
+                        if busy { ProgressView() } else { Label("Find Cards", systemImage: "sparkle.magnifyingglass") }
                     }
                     .font(.headline)
-                    .foregroundStyle(.black)
+                    .foregroundStyle(ready && !model.inDemo ? Color.accentColor : Color.secondary)
                     .frame(maxWidth: .infinity, minHeight: 34)
                 }
-                .buttonStyle(.glassProminent)
-                .tint(Color("Neon"))
+                .buttonStyle(.glass)
                 .disabled(!ready || model.inDemo)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())

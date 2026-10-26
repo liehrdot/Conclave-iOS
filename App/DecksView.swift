@@ -208,18 +208,18 @@ struct DeckView: View {
                     .foregroundStyle(.secondary)
             }
             HStack(spacing: 8) {
-                // the one green button on the screen: what the app is for at the table
+                // glass like everything around it; green text marks it as what the app is for at the table
+                // (a neon fill looked off on the soft glass, Flo 2026-10-26)
                 Button {
                     loggingGame = true
                 } label: {
                     Label("Log a Game", systemImage: "plus")
                         .font(.headline)
-                        .foregroundStyle(.black) // black on the neon, like the PWA
+                        .foregroundStyle(Color.accentColor)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
                 }
-                .buttonStyle(.glassProminent)
-                .tint(Color("Neon"))
+                .buttonStyle(.glass)
                 Button {
                     showingRule0 = true
                 } label: {
