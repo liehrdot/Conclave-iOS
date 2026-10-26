@@ -29,7 +29,7 @@ targets:
         CFBundleDisplayName: Conclave
         UILaunchScreen: {}
         ITSAppUsesNonExemptEncryption: false
-        NSCameraUsageDescription: "Conclave uses the camera to scan the pairing QR code your PC shows."
+        NSCameraUsageDescription: "Conclave uses the camera to scan the pairing QR code your PC shows and the cards you add to your collection."
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait

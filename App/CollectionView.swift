@@ -18,6 +18,7 @@ struct CollectionView: View {
     @State private var loadingCards = false
     @State private var path: [String] = AppModel.startScreen == "collection-card" ? ["Birds of Paradise"] : []
     @State private var adding = false
+    @State private var scanning = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -39,11 +40,16 @@ struct CollectionView: View {
                 ToolbarItem(placement: .topBarTrailing) { SettingsButton(device: device) }
                 // adding gets its own side, with words, so it isn't one more icon among filters and settings
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { adding = true } label: {
+                    // two ways in, one button: scan the card or type its name
+                    Menu {
+                        Button("Scan Cards", systemImage: "camera.viewfinder") { scanning = true }
+                        Button("Type a Name", systemImage: "character.cursor.ibeam") { adding = true }
+                    } label: {
                         Label("Add Card", systemImage: "plus")
                             .labelStyle(.titleAndIcon)
                             .foregroundStyle(Color("OnAccent")) // white on the dark green, black on the neon
                     }
+                    .menuStyle(.button)
                     .buttonStyle(.glassProminent) // the screen's one primary action: the accent colour behind it
                 }
                 if model.inDemo {
@@ -57,6 +63,7 @@ struct CollectionView: View {
                 .presentationDetents([.medium, .large])
         }
         .task(id: cardsWanted) { await loadCards() }
+        .fullScreenCover(isPresented: $scanning) { CardScanView() }
         .outboxStatus()
     }
 
