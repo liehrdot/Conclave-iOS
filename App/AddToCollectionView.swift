@@ -9,11 +9,15 @@ struct AddToCollectionView: View {
     let name: String
     /// A German name was what matched: start from the German printing.
     var german = false
+    /// The printing the scanner found: start from it, without asking Scryfall again.
+    var printing: Printing?
+    /// Called after "Add" with the printing that went in.
+    var added: (Printing) -> Void = { _ in }
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            AddToCollectionForm(name: name, german: german) { dismiss() }
+            AddToCollectionForm(name: name, german: german, printing: printing) { added($0); dismiss() }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 }
@@ -25,7 +29,8 @@ struct AddToCollectionView: View {
 struct AddToCollectionForm: View {
     let name: String
     var german = false
-    let done: () -> Void
+    var printing: Printing?
+    let done: (Printing) -> Void
     @Environment(AppModel.self) private var model
     @AppStorage("addProxy") private var lastProxy = false
     @AppStorage("addPlace") private var lastPlace = ""
@@ -175,11 +180,13 @@ struct AddToCollectionForm: View {
         problem = nil
         do {
             let scryfall = model.cards.scryfall
-            guard var printing = try await scryfall.printing(named: name) else {
+            var found = self.printing
+            if found == nil { found = try await scryfall.printing(named: name) }
+            guard var printing = found else {
                 problem = "Scryfall doesn't know this card."
                 return
             }
-            if german, let de = try? await scryfall.printing(set: printing.set, number: printing.collectorNumber, lang: "de") {
+            if german, self.printing == nil, let de = try? await scryfall.printing(set: printing.set, number: printing.collectorNumber, lang: "de") {
                 printing = de
             }
             var made = CollectionAddDraft(printing, proxy: lastProxy)
@@ -201,7 +208,7 @@ struct AddToCollectionForm: View {
         lastPlace = draft.place
         lastDeck = draft.deck
         Task { await model.save("collection.add", draft.payload()) }
-        done()
+        done(draft.printing)
     }
 }
 
@@ -289,7 +296,7 @@ struct AddByNameView: View {
         NavigationStack {
             List(hits) { hit in
                 NavigationLink {
-                    AddToCollectionForm(name: hit.name, german: hit.german != nil) { dismiss() }
+                    AddToCollectionForm(name: hit.name, german: hit.german != nil) { _ in dismiss() }
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(hit.german ?? hit.name)
