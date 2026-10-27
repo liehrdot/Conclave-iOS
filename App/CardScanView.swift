@@ -26,6 +26,12 @@ struct CardScanView: View {
     @State private var hits = 0
     /// "Add" was tapped in the add sheet, not "Cancel".
     @State private var added = false
+    /// The lens buttons, once the scanner said its zoom range.
+    @State private var lenses: [Lens] = []
+    /// The picked lens's zoom, kept for the next scan; 0 = the scanner's own start (the main camera).
+    @AppStorage("scanZoom") private var zoom = 0.0
+    @State private var torch = false
+    private let camera = BackCamera()
 
     private var running: Bool { found == nil && !typing }
 
@@ -35,7 +41,7 @@ struct CardScanView: View {
                 let insets = outer.safeAreaInsets
                 let screen = CGSize(width: outer.size.width + insets.leading + insets.trailing,
                                     height: outer.size.height + insets.top + insets.bottom)
-                let frame = CardFrame.rect(in: screen, top: insets.top + 12, bottom: insets.bottom + 130)
+                let frame = CardFrame.rect(in: screen, top: insets.top + 12, bottom: insets.bottom + (lenses.count > 1 ? 182 : 130))
                 ZStack {
                     Color.black
                     if allowed == false || !DataScannerViewController.isSupported {
@@ -44,7 +50,12 @@ struct CardScanView: View {
                         if running {
                             // gone while a sheet is open: the camera turns off (its light too) instead of reading on
                             // behind the sheet, and comes back when the sheet closes, like `pause()` in `scan.js`
-                            TextScanner(region: Self.region(around: frame), running: running) { read($0, frame: frame) }
+                            TextScanner(region: Self.region(around: frame), running: running, zoom: zoom > 0 ? zoom : nil,
+                                        torch: torch, camera: camera,
+                                        onRange: { min, max in
+                                            lenses = Lens.choices(switchOvers: camera.switchOvers, ultraWide: camera.ultraWide,
+                                                                  min: min, max: max)
+                                        }) { read($0, frame: frame) }
                                 .transition(.opacity)
                         }
                         ScanOverlay(frame: frame, seen: seen, status: status)
@@ -59,6 +70,15 @@ struct CardScanView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
+                }
+                if allowed == true, camera.hasTorch {
+                    // like the flashlight in Control Center: for dim tables and dark card frames
+                    ToolbarItem(placement: .primaryAction) {
+                        Button(torch ? "Turn Flashlight Off" : "Turn Flashlight On",
+                               systemImage: torch ? "flashlight.on.fill" : "flashlight.off.fill") { torch.toggle() }
+                            .labelStyle(.iconOnly)
+                            .sensoryFeedback(.selection, trigger: torch)
+                    }
                 }
             }
             .task {
@@ -85,6 +105,7 @@ struct CardScanView: View {
     /// The status and "Type a Name", floating over the camera (glass belongs on that layer).
     private var bottomBar: some View {
         VStack(spacing: 12) {
+            if allowed == true, lenses.count > 1 { lensPicker }
             if allowed == true {
                 Label(status.text, systemImage: status.symbol)
                     .font(.callout.weight(.medium))
@@ -102,6 +123,33 @@ struct CardScanView: View {
         }
         .padding(.bottom, 8)
         .padding(.horizontal)
+    }
+
+    /// The Camera app's lens buttons: "0.5", "1×", "4". The picked one shows the "×" and the accent colour.
+    private var lensPicker: some View {
+        let picked = zoom > 0 ? Lens.picked(zoom, in: lenses) : lenses.first { $0.label == "1" } ?? lenses.first
+        return HStack(spacing: 2) {
+            ForEach(lenses) { lens in
+                let on = lens == picked
+                Button {
+                    zoom = lens.zoom
+                } label: {
+                    Text(on ? lens.label + "×" : lens.label)
+                        .font(.footnote.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(on ? Color.accentColor : .white)
+                        .frame(width: 36, height: 36)
+                        .background(.black.opacity(on ? 0.45 : 0.25), in: .circle)
+                        .frame(width: 44, height: 44) // the hit area
+                        .contentShape(.circle)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(lens.label) times zoom")
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(2)
+        .glassEffect(.regular, in: .capsule)
+        .sensoryFeedback(.selection, trigger: zoom)
     }
 
     private var noCamera: some View {
@@ -318,6 +366,12 @@ private struct ScanOverlay: View {
 struct TextScanner: UIViewControllerRepresentable {
     let region: CGRect
     let running: Bool
+    /// The picked lens's zoom factor; nil keeps the scanner's own.
+    var zoom: Double?
+    var torch = false
+    var camera: BackCamera?
+    /// The zoom range the scanner allows, once it runs.
+    var onRange: @MainActor (Double, Double) -> Void = { _, _ in }
     let onLines: @MainActor ([(text: String, points: [CGPoint])]) -> Void
 
     /// English and German first; the others printed on cards where the phone reads them.
@@ -344,9 +398,16 @@ struct TextScanner: UIViewControllerRepresentable {
         if region.width > 0, scanner.regionOfInterest != region { scanner.regionOfInterest = region }
         if running, !scanner.isScanning {
             try? scanner.startScanning()
+            if scanner.isScanning { onRange(Double(scanner.minZoomFactor), Double(scanner.maxZoomFactor)) }
         } else if !running, scanner.isScanning {
             scanner.stopScanning() // the camera rests while the add sheet is open
         }
+        // only a new pick sets the zoom, so a pinch in between isn't undone by the next update
+        if scanner.isScanning, let zoom, zoom != context.coordinator.zoom {
+            context.coordinator.zoom = zoom
+            scanner.zoomFactor = min(max(zoom, scanner.minZoomFactor), scanner.maxZoomFactor)
+        }
+        if scanner.isScanning { camera?.setTorch(torch) }
     }
 
     static func dismantleUIViewController(_ scanner: DataScannerViewController, coordinator: Coordinator) {
@@ -358,6 +419,8 @@ struct TextScanner: UIViewControllerRepresentable {
     @MainActor
     final class Coordinator: NSObject, DataScannerViewControllerDelegate {
         var onLines: @MainActor ([(text: String, points: [CGPoint])]) -> Void
+        /// The zoom set last from a lens button.
+        var zoom: Double?
 
         init(onLines: @escaping @MainActor ([(text: String, points: [CGPoint])]) -> Void) {
             self.onLines = onLines
@@ -382,5 +445,29 @@ struct TextScanner: UIViewControllerRepresentable {
         func dataScanner(_ dataScanner: DataScannerViewController, didRemove removedItems: [RecognizedItem], allItems: [RecognizedItem]) {
             report(allItems)
         }
+    }
+}
+
+
+/// The back camera the scanner uses, for what VisionKit doesn't offer: its lenses (where it switches from the
+/// ultra-wide to the main camera and on to the tele) and its flashlight.
+@MainActor
+final class BackCamera {
+    let device: AVCaptureDevice?
+
+    init() {
+        let kinds: [AVCaptureDevice.DeviceType] = [.builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera]
+        device = kinds.lazy.compactMap { AVCaptureDevice.default($0, for: .video, position: .back) }.first
+    }
+
+    var switchOvers: [Double] { device?.virtualDeviceSwitchOverVideoZoomFactors.map(\.doubleValue) ?? [] }
+    var ultraWide: Bool { device?.constituentDevices.contains { $0.deviceType == .builtInUltraWideCamera } ?? false }
+    var hasTorch: Bool { device?.hasTorch ?? false }
+
+    /// The flashlight goes off by itself when the camera stops (a sheet, "Done"), so it's set again on every start.
+    func setTorch(_ on: Bool) {
+        guard let device, device.hasTorch, device.torchMode != (on ? .on : .off), (try? device.lockForConfiguration()) != nil else { return }
+        device.torchMode = on ? .on : .off
+        device.unlockForConfiguration()
     }
 }
