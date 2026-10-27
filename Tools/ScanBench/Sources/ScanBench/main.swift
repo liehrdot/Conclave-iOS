@@ -144,7 +144,7 @@ func save(_ image: CGImage, to url: URL) {
 // MARK: - The run
 
 var args = Array(CommandLine.arguments.dropFirst())
-func option(_ name: String) -> String? {
+@MainActor func option(_ name: String) -> String? {
     guard let i = args.firstIndex(of: name), i + 1 < args.count else { return nil }
     defer { args.removeSubrange(i...(i + 1)) }
     return args[i + 1]
@@ -204,7 +204,7 @@ for (n, c) in cards.enumerated() {
 }
 
 let total = max(cards.count, 1)
-func pct(_ n: Int) -> String { String(format: "%d/%d (%.0f %%)", n, cards.count, Double(n) * 100 / Double(total)) }
+@MainActor func pct(_ n: Int) -> String { String(format: "%d/%d (%.0f %%)", n, cards.count, Double(n) * 100 / Double(total)) }
 let summary = """
 ## Scanner benchmark
 
