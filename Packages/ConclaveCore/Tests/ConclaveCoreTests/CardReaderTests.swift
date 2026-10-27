@@ -23,6 +23,14 @@ import Testing
         #expect(SetLine.parse("12/12\nM 0008\nFDC • EN ✒ Raph Lomotan") == SetLine(set: "fdc", number: "8", lang: "en"))
     }
 
+    @Test func theCopyrightYearIsNoNumber() {
+        // the copyright on the right is read before the set line (seen in the benchmark: HOU #2017)
+        #expect(SetLine.parse("0109 R\n™ & © 2017 Wizards of the Coast\nHOU • EN ✒ Artist") == SetLine(set: "hou", number: "109", lang: "en"))
+        #expect(SetLine.parse("0154 U\nTM & @ 2022\nNEO • EN") == SetLine(set: "neo", number: "154", lang: "en"))
+        #expect(SetLine.parse("2023 Wizards\nWOE • EN") == SetLine(set: "woe", lang: "en"))
+        #expect(SetLine.parse("2017\nSLD • EN")?.number == "2017")  // Secret Lair numbers can look like years
+    }
+
     @Test func powerAndToughnessAreNotTheSetLine() {
         #expect(CardRead.isPowerToughness("12/12") && CardRead.isPowerToughness(" */* ") && CardRead.isPowerToughness("1/1+"))
         #expect(!CardRead.isPowerToughness("123/280 R") && !CardRead.isPowerToughness("M 0008"))

@@ -80,7 +80,7 @@ public struct SetLine: Equatable, Sendable {
     /// older cards), leading zeros gone. Mirrors `parseLine()` in `scan.js`, except that it takes the closest
     /// number, not the first: a power/toughness read above the set line ("12/12") isn't the number.
     public static func parse(_ text: String) -> SetLine? {
-        let t = text.uppercased().replacingOccurrences(of: "|", with: "I")
+        let t = withoutCopyright(text.uppercased().replacingOccurrences(of: "|", with: "I"))
         let codes = languages.keys.joined(separator: "|")
         let pattern = #"\b([A-Z0-9]{3,5})\s{0,4}(?:[^A-Z0-9\s]{1,2}\s{0,4})?("# + codes + #")\b"#
         guard let regex = try? NSRegularExpression(pattern: pattern),
@@ -93,6 +93,14 @@ public struct SetLine: Equatable, Sendable {
         let number = number(before, #"\b0*(\d{1,4})(?:\s*/\s*\d{1,4})?\b"#, last: true)
             ?? number(after, #"\b0*(\d{1,4})\s*/\s*\d{1,4}\b"#, last: false) ?? ""
         return SetLine(set: set.lowercased(), number: number, lang: languages[String(t[langRange])] ?? "en")
+    }
+
+    /// "™ & © 2017 Wizards of the Coast" sits next to the set line and its year is no collector number: a year
+    /// after ©, & or ™ (also as Vision reads them: "@", "(C)") or before "Wizards" goes.
+    static func withoutCopyright(_ text: String) -> String {
+        let pattern = #"(?:[©@&™]|\(C\)|\bTM\b)\s{0,3}(?:19|20)\d{2}\b|\b(?:19|20)\d{2}(?=\s{0,3}WIZ)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
+        return regex.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: " ")
     }
 
     private static func number(_ text: String, _ pattern: String, last: Bool) -> String? {

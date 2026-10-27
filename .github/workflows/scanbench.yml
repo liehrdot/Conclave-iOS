@@ -50,6 +50,9 @@ jobs:
           if [ -n "$CARDS" ]; then
             printf '%s\n' $CARDS > given.txt
             swift run -c release --package-path Tools/ScanBench ScanBench --from given.txt --out scanbench-out
+          elif [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            # the same 60 cards and photos every time, so a pull request's score compares with main's
+            swift run -c release --package-path Tools/ScanBench ScanBench --from Tools/ScanBench/cards.txt --out scanbench-out
           else
             swift run -c release --package-path Tools/ScanBench ScanBench "$COUNT" --out scanbench-out
           fi
