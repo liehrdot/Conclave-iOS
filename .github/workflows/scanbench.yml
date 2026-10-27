@@ -1,10 +1,17 @@
 name: Scanner benchmark
 
 # How well the scanner finds cards: random cards from Scryfall in made-up camera photos, read with Apple's Vision
-# and looked up like the app does (Tools/ScanBench). Only by hand: Actions › Scanner benchmark › Run workflow.
+# and looked up like the app does (Tools/ScanBench). By hand (Actions › Scanner benchmark › Run workflow), and on pull
+# requests that change the benchmark or the reader. Not a required check, so the paths filter is fine here.
 # The run's summary has the score and every card; the artifact holds cards.txt (to rerun the same cards) and the
 # photos it got wrong.
 on:
+  pull_request:
+    paths:
+      - Tools/ScanBench/**
+      - Packages/ConclaveCore/Sources/ConclaveCore/CardReader.swift
+      - Packages/ConclaveCore/Sources/ConclaveCore/PhotoRead.swift
+      - .github/workflows/scanbench.yml
   workflow_dispatch:
     inputs:
       count:
@@ -20,6 +27,10 @@ env:
 permissions:
   contents: read
 
+concurrency:
+  group: scanbench-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   bench:
     runs-on: macos-26
@@ -33,7 +44,7 @@ jobs:
       - run: swift build -c release --package-path Tools/ScanBench
       - name: Run
         env:
-          COUNT: ${{ inputs.count }}
+          COUNT: ${{ inputs.count || '60' }}
           CARDS: ${{ inputs.cards }}
         run: |
           if [ -n "$CARDS" ]; then
