@@ -54,7 +54,9 @@ struct CollectionView: View {
                     .menuStyle(.button)
                     .buttonStyle(.glassProminent) // the screen's one primary action: the accent colour behind it
                     .buttonBorderShape(.circle)
+                    .controlSize(.large)
                 }
+                .sharedBackgroundVisibility(.hidden) // the green circle is the button; iOS would put it in a glass pill
                 if model.inDemo {
                     ToolbarItem(placement: .topBarLeading) { DemoBadge(device: device) }
                 }
