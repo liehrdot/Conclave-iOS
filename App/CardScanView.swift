@@ -36,6 +36,8 @@ struct CardScanView: View {
     private let shutter = Shutter()
     /// A photo is being taken and read: the live picture's reads wait.
     @State private var snapping = false
+    /// A new camera after each photo: VisionKit's live picture stays frozen once it took one.
+    @State private var cameraID = 0
     /// The screen and the card frame on it, for laying the photo's lines over the frame.
     @State private var layout = ScanLayout()
 
@@ -58,6 +60,7 @@ struct CardScanView: View {
                             // behind the sheet, and comes back when the sheet closes, like `pause()` in `scan.js`
                             TextScanner(region: Self.region(around: frame), running: running, zoom: zoom > 0 ? zoom : nil,
                                         torch: torch, camera: camera, shutter: shutter) { read($0, frame: frame) }
+                                .id(cameraID)
                                 .transition(.opacity)
                         }
                         ScanOverlay(frame: frame, seen: seen, status: status)
@@ -249,7 +252,9 @@ extension CardScanView {
         let layout = layout
         Task {
             defer { snapping = false }
-            guard let image = try? await shutter.photo() else {
+            let image = try? await shutter.photo()
+            cameraID += 1 // the live picture runs on while the photo is read
+            guard let image else {
                 status = .noCard
                 return
             }
