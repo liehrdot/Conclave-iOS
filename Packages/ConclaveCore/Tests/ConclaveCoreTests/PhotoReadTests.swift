@@ -31,6 +31,7 @@ struct PhotoReadTests {
         let whole = ReadHit(printing: elves, sure: true, bySet: false, read: "Llanowar Elves")
         let both = ReadHit(printing: elves, sure: true, bySet: true, read: "Llanowar Elves")
         #expect(PhotoRead.best([bySetOnly, piece]) == piece)
+        #expect(PhotoRead.best([bySetOnly]) == nil)  // a set line alone is too weak for one photo
         #expect(PhotoRead.best([piece, whole]) == whole)
         #expect(PhotoRead.best([whole, both]) == both)
         #expect(PhotoRead.best([whole, whole]) == whole && PhotoRead.best([]) == nil)

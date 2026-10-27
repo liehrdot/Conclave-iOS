@@ -54,6 +54,9 @@ public enum PhotoRead {
             if hit.sure { return 2 }
             return hit.read.isEmpty ? 0 : 1
         }
-        return hits.enumerated().max { (rank($0.element), -$0.offset) < (rank($1.element), -$1.offset) }?.element
+        // A set line with no name read is too weak for a single photo: a misread code finds another card
+        // (The List's Gruul Clans read as CLU #7 is Wrench). "No card found" lets the person try again.
+        return hits.enumerated().filter { rank($0.element) > 0 }
+            .max { (rank($0.element), -$0.offset) < (rank($1.element), -$1.offset) }?.element
     }
 }

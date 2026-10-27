@@ -25,6 +25,8 @@ Scanner benchmark (Actions › Scanner benchmark › Run workflow, `.github/work
 command-line tool on ConclaveCore) takes random Scryfall cards (every 5th German), renders each into a made-up phone photo
 (size, turn, shift, blur, light, noise), reads it with Vision and runs `PhotoRead.identify` and a single live read; the
 `scanbench` artifact has the score, `cards.txt` (run it again with the same cards via the `cards` input) and the misses.
+On a pull request that touches the reader it runs the fixed 60 cards in `Tools/ScanBench/cards.txt` (photos are seeded by
+the card), so scores compare.
 What runs when: a `changes` job (`git diff` against the PR's base) lets the Mac jobs skip pull requests that
 can't affect them: `ios` and CodeQL `swift` only for `App/`, `Packages/`, `project.yml` or their workflow, CodeQL `actions`
 only for `.github/`; pushes to `main`, the weekly CodeQL run and runs by hand always do everything. Use a job-level `if:`,
