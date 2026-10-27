@@ -35,4 +35,26 @@ struct PhotoReadTests {
         #expect(PhotoRead.best([whole, both]) == both)
         #expect(PhotoRead.best([whole, whole]) == whole && PhotoRead.best([]) == nil)
     }
+
+    @Test func aPhotoIsReadOverTheCardFrame() async {
+        // a 3:4 photo on a 400 × 800 screen: half size, 100 points cut off left and right
+        let photo = CGSize(width: 1200, height: 1600), screen = CGSize(width: 400, height: 800)
+        let frame = CardFrame.rect(in: screen, top: 60, bottom: 200)
+        func inPhoto(_ x: Double, _ y: Double, _ w: Double, _ h: Double) -> CGRect {  // a frame-relative box, in the photo
+            CGRect(x: (Double(frame.minX) + x * Double(frame.width) + 100) * 2, y: (Double(frame.minY) + y * Double(frame.height)) * 2,
+                   width: w * Double(frame.width) * 2, height: h * Double(frame.height) * 2)
+        }
+        let lookup = CardReaderTests.Lookup()
+        lookup.byName["llanowar elves|fdn"] = CardReaderTests.elves
+        lookup.bySet["fdn/274/en"] = CardReaderTests.elves
+        let reader = CardReader(lookup: lookup)
+        let lines: [(text: String, box: CGRect)] = [
+            ("Llanowar Elves", inPhoto(0.08, 0.04, 0.6, 0.05)),
+            ("0274 C", inPhoto(0.05, 0.9, 0.2, 0.02)),
+            ("FDN • EN Artist", inPhoto(0.05, 0.93, 0.4, 0.02)),
+        ]
+        let hit = await PhotoRead.identify(lines, photo: photo, screen: screen, frame: frame, reader: reader)
+        #expect(hit?.printing == CardReaderTests.elves && hit?.bySet == true)
+        #expect(await PhotoRead.identify([], photo: photo, screen: screen, frame: frame, reader: reader) == nil)
+    }
 }

@@ -26,6 +26,26 @@ public enum PhotoRead {
         }
     }
 
+    /// The card a photo shows: its read lines (text and box in the photo, from the top left) laid over each
+    /// of `frames(around:)` on the screen and read like a camera frame; the best hit wins. Stops early when the
+    /// set line and the name agree. The app's "Take Photo" and the scanner benchmark both go through here.
+    public static func identify(_ lines: [(text: String, box: CGRect)], photo: CGSize, screen: CGSize, frame: CGRect,
+                                reader: CardReader) async -> ReadHit? {
+        var hits: [ReadHit] = []
+        for frame in frames(around: frame) {
+            let placed = lines.map { line in
+                let box = screenRect(of: line.box, photo: photo, screen: screen)
+                let corners = [CGPoint(x: box.minX, y: box.minY), CGPoint(x: box.maxX, y: box.minY),
+                               CGPoint(x: box.maxX, y: box.maxY), CGPoint(x: box.minX, y: box.maxY)]
+                return ReadLine(line.text, points: corners, frame: frame)
+            }
+            guard let hit = await reader.identify(CardRead(placed)) else { continue }
+            hits.append(hit)
+            if hit.bySet && !hit.read.isEmpty { break } // set line and name agree: nothing better to find
+        }
+        return best(hits)
+    }
+
     /// The best of several reads' hits: the set line and the name agree › the whole name read › a piece of it
     /// (`coverage()` in `scan.js`).
     public static func best(_ hits: [ReadHit]) -> ReadHit? {

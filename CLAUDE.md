@@ -21,6 +21,10 @@ Nobody here has a Mac: the app is built in GitHub Actions (`.github/workflows/ci
 keeps the unsigned `Conclave.ipa` as the run's artifact. Its `screenshots` job (only when started by hand: Actions › CI › Run workflow; Flo tests on the iPhone) runs `scripts/screenshots.sh`: the app in the
 simulator, iPhone and iPad, light and dark, as the run's `screenshots` artifact (the `icon` job, `scripts/icon.sh`, runs when `App/AppIcon.icon` or the script changed, or by hand); the app opens the screen named
 in the environment variable `CONCLAVE_SCREEN` (add new ones to `SCREENS` in the script). `docs/sideload.md` says how it gets onto a phone.
+Scanner benchmark (Actions › Scanner benchmark › Run workflow, `.github/workflows/scanbench.yml`): `Tools/ScanBench` (a Mac
+command-line tool on ConclaveCore) takes random Scryfall cards (every 5th German), renders each into a made-up phone photo
+(size, turn, shift, blur, light, noise), reads it with Vision and runs `PhotoRead.identify` and a single live read; the
+`scanbench` artifact has the score, `cards.txt` (run it again with the same cards via the `cards` input) and the misses.
 What runs when: a `changes` job (`git diff` against the PR's base) lets the Mac jobs skip pull requests that
 can't affect them: `ios` and CodeQL `swift` only for `App/`, `Packages/`, `project.yml` or their workflow, CodeQL `actions`
 only for `.github/`; pushes to `main`, the weekly CodeQL run and runs by hand always do everything. Use a job-level `if:`,
@@ -80,7 +84,8 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `Lenses.swift`: `Lens` = one lens button (zoom factor + "0.5"/"1"/"4" counted from the main camera), `choices()` from the
   camera's switch-over zooms, `picked()`.
   `PhotoRead.swift`: "Take Photo"'s maths: `screenRect()` (a photo box on the aspect-filled screen), `frames(around:)` (card
-  frames of 1, 0.85, 1.15, 0.7 × the screen's), `best()` (set line + name › whole name › a piece).
+  frames of 1, 0.85, 1.15, 0.7 × the screen's), `best()` (set line + name › whole name › a piece),
+  `identify()` = all of it for one photo's read lines (the app's "Take Photo" and the benchmark share it).
   `GameDraft` = the "Log a Game" form's state and rules (`forms.js` game sheet: rematch within 8 h, `setResult`, `setPlace` fills
   the last place and decides win/loss, `payload` = `game.add`). `ReadModelCache.loadJSON()` = the raw saved copy for `Optimistic`.
   `PendingOp.summary(in:)` (`OpSummary`) = a change in a few words ("Loss with Meren") for the toast and the refused list.
