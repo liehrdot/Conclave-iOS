@@ -26,7 +26,7 @@ struct CardScanView: View {
     @State private var hits = 0
     /// "Add" was tapped in the add sheet, not "Cancel".
     @State private var added = false
-    /// The lens buttons, once the scanner said its zoom range.
+    /// The lens buttons, from the back camera itself: VisionKit tells its zoom range only once it runs, and late.
     @State private var lenses: [Lens] = []
     /// The picked lens's zoom, kept for the next scan; 0 = the scanner's own start (the main camera).
     @AppStorage("scanZoom") private var zoom = 0.0
@@ -51,11 +51,7 @@ struct CardScanView: View {
                             // gone while a sheet is open: the camera turns off (its light too) instead of reading on
                             // behind the sheet, and comes back when the sheet closes, like `pause()` in `scan.js`
                             TextScanner(region: Self.region(around: frame), running: running, zoom: zoom > 0 ? zoom : nil,
-                                        torch: torch, camera: camera,
-                                        onRange: { min, max in
-                                            lenses = Lens.choices(switchOvers: camera.switchOvers, ultraWide: camera.ultraWide,
-                                                                  min: min, max: max)
-                                        }) { read($0, frame: frame) }
+                                        torch: torch, camera: camera) { read($0, frame: frame) }
                                 .transition(.opacity)
                         }
                         ScanOverlay(frame: frame, seen: seen, status: status)
@@ -85,6 +81,7 @@ struct CardScanView: View {
                 reader = CardReader(lookup: model.cards.scryfall)
                 guard DataScannerViewController.isSupported else { return } // no question without a scanner
                 allowed = await AVCaptureDevice.requestAccess(for: .video)
+                lenses = Lens.choices(switchOvers: camera.switchOvers, ultraWide: camera.ultraWide, max: camera.maxZoom)
             }
             .sensoryFeedback(.success, trigger: hits)
             .onChange(of: running) { _, now in
@@ -370,8 +367,6 @@ struct TextScanner: UIViewControllerRepresentable {
     var zoom: Double?
     var torch = false
     var camera: BackCamera?
-    /// The zoom range the scanner allows, once it runs.
-    var onRange: @MainActor (Double, Double) -> Void = { _, _ in }
     let onLines: @MainActor ([(text: String, points: [CGPoint])]) -> Void
 
     /// English and German first; the others printed on cards where the phone reads them.
@@ -398,15 +393,11 @@ struct TextScanner: UIViewControllerRepresentable {
         if region.width > 0, scanner.regionOfInterest != region { scanner.regionOfInterest = region }
         if running, !scanner.isScanning {
             try? scanner.startScanning()
-            if scanner.isScanning { onRange(Double(scanner.minZoomFactor), Double(scanner.maxZoomFactor)) }
         } else if !running, scanner.isScanning {
             scanner.stopScanning() // the camera rests while the add sheet is open
         }
-        // only a new pick sets the zoom, so a pinch in between isn't undone by the next update
-        if scanner.isScanning, let zoom, zoom != context.coordinator.zoom {
-            context.coordinator.zoom = zoom
-            scanner.zoomFactor = min(max(zoom, scanner.minZoomFactor), scanner.maxZoomFactor)
-        }
+        context.coordinator.wanted = zoom
+        context.coordinator.applyZoom(scanner)
         if scanner.isScanning { camera?.setTorch(torch) }
     }
 
@@ -419,14 +410,24 @@ struct TextScanner: UIViewControllerRepresentable {
     @MainActor
     final class Coordinator: NSObject, DataScannerViewControllerDelegate {
         var onLines: @MainActor ([(text: String, points: [CGPoint])]) -> Void
-        /// The zoom set last from a lens button.
-        var zoom: Double?
+        /// The picked lens's zoom, and the one set last: only a new pick sets it, so a pinch isn't undone.
+        var wanted: Double?
+        private var applied: Double?
+
+        /// Sets the picked zoom once the camera runs and knows its range (that comes a moment after the start,
+        /// so every new read tries again until it took).
+        func applyZoom(_ scanner: DataScannerViewController) {
+            guard let wanted, wanted != applied, scanner.isScanning, scanner.maxZoomFactor > scanner.minZoomFactor else { return }
+            applied = wanted
+            scanner.zoomFactor = min(max(wanted, scanner.minZoomFactor), scanner.maxZoomFactor)
+        }
 
         init(onLines: @escaping @MainActor ([(text: String, points: [CGPoint])]) -> Void) {
             self.onLines = onLines
         }
 
-        private func report(_ items: [RecognizedItem]) {
+        private func report(_ items: [RecognizedItem], from scanner: DataScannerViewController) {
+            applyZoom(scanner)
             onLines(items.compactMap { item in
                 guard case .text(let text) = item else { return nil }
                 let b = text.bounds
@@ -435,15 +436,15 @@ struct TextScanner: UIViewControllerRepresentable {
         }
 
         func dataScanner(_ dataScanner: DataScannerViewController, didAdd addedItems: [RecognizedItem], allItems: [RecognizedItem]) {
-            report(allItems)
+            report(allItems, from: dataScanner)
         }
 
         func dataScanner(_ dataScanner: DataScannerViewController, didUpdate updatedItems: [RecognizedItem], allItems: [RecognizedItem]) {
-            report(allItems)
+            report(allItems, from: dataScanner)
         }
 
         func dataScanner(_ dataScanner: DataScannerViewController, didRemove removedItems: [RecognizedItem], allItems: [RecognizedItem]) {
-            report(allItems)
+            report(allItems, from: dataScanner)
         }
     }
 }
@@ -463,6 +464,8 @@ final class BackCamera {
     var switchOvers: [Double] { device?.virtualDeviceSwitchOverVideoZoomFactors.map(\.doubleValue) ?? [] }
     var ultraWide: Bool { device?.constituentDevices.contains { $0.deviceType == .builtInUltraWideCamera } ?? false }
     var hasTorch: Bool { device?.hasTorch ?? false }
+    /// How far the lens buttons go: the tele's switch-over and a little beyond, never past what the camera can.
+    var maxZoom: Double { Double(device?.maxAvailableVideoZoomFactor ?? 10) }
 
     /// The flashlight goes off by itself when the camera stops (a sheet, "Done"), so it's set again on every start.
     func setTorch(_ on: Bool) {
