@@ -106,6 +106,7 @@ struct DeckView: View {
     @State private var shownCard: ShownCard? = AppModel.startScreen == "card" ? ShownCard(name: "Birds of Paradise") : nil
     /// What the search field filters the cards by; while it has text only matching cards show.
     @State private var query = ""
+    @State private var addingCards = false
 
     var body: some View {
         List {
@@ -144,7 +145,13 @@ struct DeckView: View {
         .sheet(isPresented: $showingRule0) { Rule0View(deck: deck) }
         .sheet(isPresented: $loggingGame) { LogGameView(deck: deck, library: model.library) }
         .sheet(item: $shownCard) { shown in
-            CardSheet(name: shown.name, copies: model.library?.copies(of: shown.name, in: deck) ?? [])
+            CardSheet(name: shown.name, copies: model.library?.copies(of: shown.name, in: deck) ?? [], deck: deck)
+        }
+        .sheet(isPresented: $addingCards) { DeckCardSearch(slug: deck.slug) }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Add Cards", systemImage: "plus") { addingCards = true }
+            }
         }
         // the deck's cards in one request, so the card view opens at once and works offline later
         .task(id: deck.slug) { await model.cards.prefetch((deck.cards + deck.maybe).map(\.name)) }

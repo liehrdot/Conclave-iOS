@@ -6,7 +6,8 @@ import Foundation
 /// (`ops.json`) in `OptimisticTests`.
 ///
 /// It works on the raw JSON, not on `ReadModel`, so keys the app doesn't model survive. Games, opponent
-/// decks and the collection for now; the deck types leave the model as it is until their screens come.
+/// decks, the collection and `deck.edit` for now; the other deck types leave the model as it is until their
+/// screens come.
 /// An operation the server would refuse (no result, a deleted deck) is not shown: the server's answer
 /// marks it failed, with its reason.
 public enum Optimistic {
@@ -45,6 +46,8 @@ public enum Optimistic {
             addToCollection(p, op: op, in: &model)
         case "collection.update":
             changeCollection(p, in: &model)
+        case "deck.edit":
+            editDeck(p, op: op, in: &model)
         default:
             break  // decks: not shown at once yet
         }
@@ -203,6 +206,65 @@ public enum Optimistic {
         }
         model["collection"] = .array(merged.filter { ($0["qty"]?.int ?? 0) > 0 }.map(JSONValue.object))
     }
+
+    /// `appops._deck_edit`: `add` (quantities add up, at most 99), `remove`, `set_qty` (0 removes), `set_category`,
+    /// then the maybe list like `maybe.change` (deck cards leave it, `maybe_remove`, `maybe_add` moves a deck card
+    /// there). A commander anywhere refuses the whole op; no change, no new version. The PC checks it later.
+    static func editDeck(_ p: JSONValue, op: PendingOp, in model: inout Object) {
+        var decks = objects(model["decks"])
+        guard let slug = p["deck"]?.string, let index = decks.firstIndex(where: { $0["slug"]?.string == slug }) else { return }
+        var deck = decks[index]
+        let commanders = Set((deck["commanders"]?.array ?? []).compactMap(\.string))
+        func category(_ value: JSONValue?) -> String? { value?.string.flatMap { categories.contains($0) ? $0 : nil } }
+        var cards: [String: Object] = [:]
+        for card in objects(deck["cards"]) { if let name = card["name"]?.string { cards[name] = card } }
+        var maybe: [String: Object] = [:]
+        for card in objects(deck["maybe"]) { if let name = card["name"]?.string { maybe[name] = card } }
+        let (cardsBefore, maybeBefore) = (cards, maybe)
+        for a in objects(p["add"]) {
+            guard let name = text(a["name"]), !commanders.contains(name) else { return }  // the server refuses it
+            let qty = a["qty"].map { $0.int ?? -1 } ?? 1
+            guard (0...99).contains(qty) else { return }
+            if let have = cards[name]?["qty"]?.int {
+                cards[name]?["qty"] = .int(min(99, have + max(1, qty)))
+            } else {
+                cards[name] = ["name": .string(name), "qty": .int(max(1, qty)), "category": .string(category(a["category"]) ?? "Synergy")]
+            }
+        }
+        for name in (p["remove"]?.array ?? []).compactMap(\.string) { cards[name] = nil }
+        for (name, qty) in p["set_qty"]?.object ?? [:] {
+            guard let qty = qty.int, (0...99).contains(qty) else { return }
+            if cards[name] == nil { continue }
+            if qty == 0 { cards[name] = nil } else { cards[name]?["qty"] = .int(qty) }
+        }
+        for (name, value) in p["set_category"]?.object ?? [:] {
+            if cards[name] != nil, let cat = category(value) { cards[name]?["category"] = .string(cat) }
+        }
+        for name in maybe.keys where cards[name] != nil { maybe[name] = nil }  // went into the deck
+        for name in (p["maybe_remove"]?.array ?? []).compactMap(\.string) { maybe[name] = nil }
+        for a in objects(p["maybe_add"]) {
+            guard let name = text(a["name"]), !commanders.contains(name) else { return }
+            let card = cards.removeValue(forKey: name)
+            if maybe[name] != nil && card == nil { continue }
+            let cat = category(a["category"]) ?? card?["category"]?.string.flatMap { $0.isEmpty ? nil : $0 } ?? "Synergy"
+            maybe[name] = ["name": .string(name), "category": .string(cat)]
+        }
+        guard cards != cardsBefore || maybe != maybeBefore else { return }  // no new version
+        deck["cards"] = .array(cards.keys.sorted(by: codepoints).compactMap { cards[$0] }.map(JSONValue.object))
+        deck["maybe"] = .array(maybe.keys.sorted(by: codepoints).compactMap { maybe[$0] }.map(JSONValue.object))
+        deck["version"] = .int((deck["version"]?.int ?? 0) + 1)
+        deck["updated"] = .string(op.at)
+        deck["checking"] = .bool(true)
+        decks[index] = deck
+        model["decks"] = .array(decks.map(JSONValue.object))
+    }
+
+    /// `appops.CATEGORIES`.
+    static let categories: Set = ["Ramp", "Draw", "Removal", "Board Wipe", "Counterspell", "Tutor", "Protection",
+                                  "Synergy", "Win Condition", "Utility", "Land"]
+
+    /// Python's `sorted()` on strings: by code point, not by locale.
+    static func codepoints(_ a: String, _ b: String) -> Bool { a.unicodeScalars.lexicographicallyPrecedes(b.unicodeScalars) }
 
     /// What the server works out from the games: each deck's and opponent's record, the order of games,
     /// decks and opponents, the player names. Mirrors `appdata.snapshot` (and `recompute()` in `data.js`).
