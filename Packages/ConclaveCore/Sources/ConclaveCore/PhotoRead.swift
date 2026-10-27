@@ -39,7 +39,12 @@ public enum PhotoRead {
                                CGPoint(x: box.maxX, y: box.maxY), CGPoint(x: box.minX, y: box.maxY)]
                 return ReadLine(line.text, points: corners, frame: frame)
             }
-            guard let hit = await reader.identify(CardRead(placed)) else { continue }
+            let read = CardRead(placed)
+            guard let hit = await reader.identify(read) else { continue }
+            // A set line with no name read at all is too weak for one photo: a misread code finds another card
+            // (The List's Gruul Clans read as CLU #7 is Wrench), and "No card found" lets the person try again.
+            // A name that was read but not matched (a German one, say) still lets the set line count.
+            if read.names.isEmpty && !hit.sure && hit.read.isEmpty { continue }
             hits.append(hit)
             if hit.bySet && !hit.read.isEmpty { break } // set line and name agree: nothing better to find
         }
@@ -54,9 +59,6 @@ public enum PhotoRead {
             if hit.sure { return 2 }
             return hit.read.isEmpty ? 0 : 1
         }
-        // A set line with no name read is too weak for a single photo: a misread code finds another card
-        // (The List's Gruul Clans read as CLU #7 is Wrench). "No card found" lets the person try again.
-        return hits.enumerated().filter { rank($0.element) > 0 }
-            .max { (rank($0.element), -$0.offset) < (rank($1.element), -$1.offset) }?.element
+        return hits.enumerated().max { (rank($0.element), -$0.offset) < (rank($1.element), -$1.offset) }?.element
     }
 }

@@ -31,7 +31,6 @@ struct PhotoReadTests {
         let whole = ReadHit(printing: elves, sure: true, bySet: false, read: "Llanowar Elves")
         let both = ReadHit(printing: elves, sure: true, bySet: true, read: "Llanowar Elves")
         #expect(PhotoRead.best([bySetOnly, piece]) == piece)
-        #expect(PhotoRead.best([bySetOnly]) == nil)  // a set line alone is too weak for one photo
         #expect(PhotoRead.best([piece, whole]) == whole)
         #expect(PhotoRead.best([whole, both]) == both)
         #expect(PhotoRead.best([whole, whole]) == whole && PhotoRead.best([]) == nil)
@@ -57,5 +56,11 @@ struct PhotoReadTests {
         let hit = await PhotoRead.identify(lines, photo: photo, screen: screen, frame: frame, reader: reader)
         #expect(hit?.printing == CardReaderTests.elves && hit?.bySet == true)
         #expect(await PhotoRead.identify([], photo: photo, screen: screen, frame: frame, reader: reader) == nil)
+        // a set line with no name read is too weak for one photo
+        let setOnly = Array(lines.dropFirst())
+        #expect(await PhotoRead.identify(setOnly, photo: photo, screen: screen, frame: frame, reader: reader) == nil)
+        // but with a name read that matched nothing, the set line still counts
+        let unknown = [("Elfes de Llanowar", inPhoto(0.08, 0.04, 0.6, 0.05))] + setOnly
+        #expect(await PhotoRead.identify(unknown, photo: photo, screen: screen, frame: frame, reader: reader)?.printing == CardReaderTests.elves)
     }
 }
