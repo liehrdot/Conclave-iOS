@@ -77,6 +77,8 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   from the bottom, `cleanName()`), `CardLookup` (Scryfall, or a fake in tests), `actor CardReader` (`identify()`: set line
   checked against the name, else fuzzy name in that set first, else a printed German name and its longest word; each text
   asked once), `ScanSteadiness` (a doubtful hit must come twice, the card just added waits for an empty frame).
+  `Lenses.swift`: `Lens` = one lens button (zoom factor + "0.5"/"1"/"4" counted from the main camera), `choices()` from the
+  camera's switch-over zooms, `picked()`.
   `GameDraft` = the "Log a Game" form's state and rules (`forms.js` game sheet: rematch within 8 h, `setResult`, `setPlace` fills
   the last place and decides win/loss, `payload` = `game.add`). `ReadModelCache.loadJSON()` = the raw saved copy for `Optimistic`.
   `PendingOp.summary(in:)` (`OpSummary`) = a change in a few words ("Loss with Meren") for the toast and the refused list.
@@ -104,7 +106,9 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `CardFrame` cutout), each change › `ReadLine`s › `CardRead` › `CardReader.identify` (one at a time, only the newest read
   waits) › `ScanSteadiness` › the add sheet with the found printing; `ScanOverlay` dims around the frame, boxes every read
   line, marks and labels the name and the set line, the frame snaps green on a hit (fades with Reduce Motion), a glass status
-  pill says it in words, success haptic, VoiceOver announcement; "Type a Name" › `AddByNameView`)
+  pill says it in words, success haptic, VoiceOver announcement; the Camera app's lens buttons ("0.5", "1×", "4": `Lens.choices`
+  in the core from `BackCamera`'s switch-over zooms, kept in `AppStorage` `scanZoom`) and a flashlight button (`BackCamera.setTorch`,
+  set again whenever the camera starts); "Type a Name" › `AddByNameView`)
   and the search tab Cards (`CardsView`, `Tab(role: .search)`:
   `.searchable`, `find(name:)` 300 ms after typing pauses, rows with `CardArt`, the last 12 opened in `AppStorage` `recentCards`, tap › `CardSheet`; "Filters" in the top bar › `FilterSheet` (with a filter the name search is one paged `Scryfall.search`, without a name
   the most played cards that fit; `FiltersRow` (shared with the Collection tab: a plain line, words in the label colour) above the results); a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
