@@ -45,12 +45,15 @@ struct CollectionView: View {
                         Button("Scan Cards", systemImage: "camera.viewfinder") { scanning = true }
                         Button("Type a Name", systemImage: "character.cursor.ibeam") { adding = true }
                     } label: {
+                        // a toolbar menu shows only the icon, so a round button: VoiceOver still says "Add Card"
                         Label("Add Card", systemImage: "plus")
-                            .labelStyle(.titleAndIcon)
+                            .labelStyle(.iconOnly)
+                            .fontWeight(.semibold)
                             .foregroundStyle(Color("OnAccent")) // white on the dark green, black on the neon
                     }
                     .menuStyle(.button)
                     .buttonStyle(.glassProminent) // the screen's one primary action: the accent colour behind it
+                    .buttonBorderShape(.circle)
                 }
                 if model.inDemo {
                     ToolbarItem(placement: .topBarLeading) { DemoBadge(device: device) }
