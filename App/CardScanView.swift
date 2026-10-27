@@ -259,20 +259,9 @@ extension CardScanView {
                 return
             }
             let lines = await PhotoText.read(image)
-            var hits: [ReadHit] = []
-            for frame in PhotoRead.frames(around: layout.frame) {
-                let placed = lines.map { line in
-                    let box = PhotoRead.screenRect(of: line.box, photo: image.size, screen: layout.screen)
-                    let corners = [CGPoint(x: box.minX, y: box.minY), CGPoint(x: box.maxX, y: box.minY),
-                                   CGPoint(x: box.maxX, y: box.maxY), CGPoint(x: box.minX, y: box.maxY)]
-                    return ReadLine(line.text, points: corners, frame: frame)
-                }
-                guard let hit = await reader.identify(CardRead(placed)) else { continue }
-                hits.append(hit)
-                if hit.bySet && !hit.read.isEmpty { break } // set line and name agree: nothing better to find
-            }
+            let hit = await PhotoRead.identify(lines, photo: image.size, screen: layout.screen, frame: layout.frame, reader: reader)
             guard running else { return }
-            if let hit = PhotoRead.best(hits) {
+            if let hit {
                 show(hit.printing)
             } else {
                 status = .noCard

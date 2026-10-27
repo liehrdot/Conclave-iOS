@@ -1,0 +1,50 @@
+name: Scanner benchmark
+
+# How well the scanner finds cards: random cards from Scryfall in made-up camera photos, read with Apple's Vision
+# and looked up like the app does (Tools/ScanBench). Only by hand: Actions › Scanner benchmark › Run workflow.
+# The run's summary has the score and every card; the artifact holds cards.txt (to rerun the same cards) and the
+# photos it got wrong.
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: How many random cards
+        default: "60"
+      cards:
+        description: Optional "set/number/lang" keys separated by spaces, to rerun the same cards
+        default: ""
+
+env:
+  XCODE: "26.6"
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Use Xcode ${{ env.XCODE }}
+        run: |
+          sudo xcode-select -s "/Applications/Xcode_${XCODE}.app"
+          xcodebuild -version
+      - run: swift build -c release --package-path Tools/ScanBench
+      - name: Run
+        env:
+          COUNT: ${{ inputs.count }}
+          CARDS: ${{ inputs.cards }}
+        run: |
+          if [ -n "$CARDS" ]; then
+            printf '%s\n' $CARDS > given.txt
+            swift run -c release --package-path Tools/ScanBench ScanBench --from given.txt --out scanbench-out
+          else
+            swift run -c release --package-path Tools/ScanBench ScanBench "$COUNT" --out scanbench-out
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: scanbench
+          path: scanbench-out
+          retention-days: 14
