@@ -1,6 +1,7 @@
 import AVFoundation
 import ConclaveCore
 import SwiftUI
+import Vision
 import VisionKit
 
 /// "Scan Cards": hold a card in the frame, the phone reads its name and set line and opens the add sheet.
@@ -32,6 +33,11 @@ struct CardScanView: View {
     @AppStorage("scanZoom") private var zoom = 0.0
     @State private var torch = false
     private let camera = BackCamera()
+    private let shutter = Shutter()
+    /// A photo is being taken and read: the live picture's reads wait.
+    @State private var snapping = false
+    /// The screen and the card frame on it, for laying the photo's lines over the frame.
+    @State private var layout = ScanLayout()
 
     private var running: Bool { found == nil && !typing }
 
@@ -51,13 +57,14 @@ struct CardScanView: View {
                             // gone while a sheet is open: the camera turns off (its light too) instead of reading on
                             // behind the sheet, and comes back when the sheet closes, like `pause()` in `scan.js`
                             TextScanner(region: Self.region(around: frame), running: running, zoom: zoom > 0 ? zoom : nil,
-                                        torch: torch, camera: camera) { read($0, frame: frame) }
+                                        torch: torch, camera: camera, shutter: shutter) { read($0, frame: frame) }
                                 .transition(.opacity)
                         }
                         ScanOverlay(frame: frame, seen: seen, status: status)
                     }
                 }
                 .ignoresSafeArea()
+                .onChange(of: ScanLayout(screen: screen, frame: frame), initial: true) { _, now in layout = now }
             }
             .overlay(alignment: .bottom) { bottomBar }
             .environment(\.colorScheme, .dark) // a camera screen is dark in light mode too
@@ -114,9 +121,16 @@ struct CardScanView: View {
                     .accessibilityAddTraits(.updatesFrequently)
                     .animation(reduceMotion ? nil : .smooth(duration: 0.2), value: status)
             }
-            Button("Type a Name", systemImage: "character.cursor.ibeam") { typing = true }
-                .buttonStyle(.glass)
-                .controlSize(.large)
+            HStack(spacing: 12) {
+                Button("Type a Name", systemImage: "character.cursor.ibeam") { typing = true }
+                if allowed == true {
+                    // for cards the live picture can't get: one sharp photo, read as a whole
+                    Button("Take Photo", systemImage: "camera") { takePhoto() }
+                        .disabled(snapping)
+                }
+            }
+            .buttonStyle(.glass)
+            .controlSize(.large)
         }
         .padding(.bottom, 8)
         .padding(.horizontal)
@@ -169,7 +183,7 @@ struct CardScanView: View {
     // MARK: - What the camera read
 
     private func read(_ items: [(text: String, points: [CGPoint])], frame: CGRect) {
-        guard running else { return }
+        guard running, !snapping else { return }
         let lines = items.map { ReadLine($0.text, points: $0.points, frame: frame) }
         let card = CardRead(lines)
         seen = ScanSeen(lines: lines.map { $0.rect(in: frame) }, card: card, frame: frame)
@@ -199,13 +213,7 @@ struct CardScanView: View {
     private func take(_ outcome: ScanSteadiness.Outcome, read card: CardRead) {
         switch outcome {
         case .found(let printing):
-            status = .found(printing.shownName)
-            hits += 1
-            AccessibilityNotification.Announcement("Found \(printing.shownName)").post()
-            // added or not, the same card waits until the frame was empty, else "Cancel" would reopen it at once
-            steadiness.added(printing)
-            added = false
-            found = printing
+            show(printing)
         case .maybe(let printing):
             status = .maybe(printing.shownName)
         case .alreadyAdded:
@@ -216,6 +224,108 @@ struct CardScanView: View {
             } else if let name = card.names.first, status.isIdle || status.isReading {
                 status = .reading(name)
             }
+        }
+    }
+}
+
+extension CardScanView {
+    /// The add sheet for a found card.
+    private func show(_ printing: Printing) {
+        status = .found(printing.shownName)
+        hits += 1
+        AccessibilityNotification.Announcement("Found \(printing.shownName)").post()
+        // added or not, the same card waits until the frame was empty, else "Cancel" would reopen it at once
+        steadiness.added(printing)
+        added = false
+        found = printing
+    }
+
+    /// "Take Photo": the scanner's camera takes one full photo, Vision reads all of it, and the reader tries
+    /// card frames of a few sizes around the one on the screen (`PhotoRead`, like `scanPhoto()` in `scan.js`).
+    private func takePhoto() {
+        guard let reader, !snapping else { return }
+        snapping = true
+        status = .photo
+        let layout = layout
+        Task {
+            defer { snapping = false }
+            guard let image = try? await shutter.photo() else {
+                status = .noCard
+                return
+            }
+            let lines = await PhotoText.read(image)
+            var hits: [ReadHit] = []
+            for frame in PhotoRead.frames(around: layout.frame) {
+                let placed = lines.map { line in
+                    let box = PhotoRead.screenRect(of: line.box, photo: image.size, screen: layout.screen)
+                    let corners = [CGPoint(x: box.minX, y: box.minY), CGPoint(x: box.maxX, y: box.minY),
+                                   CGPoint(x: box.maxX, y: box.maxY), CGPoint(x: box.minX, y: box.maxY)]
+                    return ReadLine(line.text, points: corners, frame: frame)
+                }
+                guard let hit = await reader.identify(CardRead(placed)) else { continue }
+                hits.append(hit)
+                if hit.bySet && !hit.read.isEmpty { break } // set line and name agree: nothing better to find
+            }
+            guard running else { return }
+            if let hit = PhotoRead.best(hits) {
+                show(hit.printing)
+            } else {
+                status = .noCard
+            }
+        }
+    }
+}
+
+/// The screen's size and the card frame on it.
+struct ScanLayout: Equatable {
+    var screen = CGSize.zero
+    var frame = CGRect.zero
+}
+
+/// Takes a photo with the scanner's own camera (no second camera session).
+@MainActor
+final class Shutter {
+    weak var scanner: DataScannerViewController?
+
+    struct NoCamera: Error {}
+
+    func photo() async throws -> UIImage {
+        guard let scanner, scanner.isScanning else { throw NoCamera() }
+        return try await scanner.capturePhoto()
+    }
+}
+
+/// Vision's text recognition on a still photo: each line's text and its box in the photo (points from the top
+/// left, as `UIImage.size` counts them).
+enum PhotoText {
+    static func read(_ image: UIImage) async -> [(text: String, box: CGRect)] {
+        guard let cgImage = image.cgImage else { return [] }
+        var request = RecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = false // card names aren't dictionary words
+        request.recognitionLanguages = ["en-US", "de-DE", "fr-FR", "it-IT", "es-ES", "pt-BR"].map { Locale.Language(identifier: $0) }
+        guard let observations = try? await request.perform(on: cgImage, orientation: CGImagePropertyOrientation(image.imageOrientation))
+        else { return [] }
+        return observations.compactMap { observation in
+            guard let text = observation.topCandidates(1).first?.string else { return nil }
+            return (text, observation.boundingBox.toImageCoordinates(image.size, origin: .upperLeft))
+        }
+    }
+}
+
+extension CGImagePropertyOrientation {
+    /// The same turn as a `UIImage`'s, so Vision reads the photo upright.
+    init(_ orientation: UIImage.Orientation) {
+        switch orientation {
+        case .up: self = .up
+        case .upMirrored: self = .upMirrored
+        case .down: self = .down
+        case .downMirrored: self = .downMirrored
+        case .left: self = .left
+        case .leftMirrored: self = .leftMirrored
+        case .right: self = .right
+        case .rightMirrored: self = .rightMirrored
+        @unknown default: self = .up
         }
     }
 }
@@ -235,6 +345,10 @@ enum ScanStatus: Equatable {
     case maybe(String)
     case found(String)
     case added(String)
+    /// "Take Photo" is reading its photo.
+    case photo
+    /// The photo showed no card.
+    case noCard
 
     var text: String {
         switch self {
@@ -243,6 +357,8 @@ enum ScanStatus: Equatable {
         case .maybe(let name): "\(name)? Hold still"
         case .found(let name): "Found \(name)"
         case .added(let name): "\(name) added. Show the next card"
+        case .photo: "Reading the photo…"
+        case .noCard: "No card found. Try again"
         }
     }
 
@@ -253,6 +369,8 @@ enum ScanStatus: Equatable {
         case .maybe: "questionmark.circle"
         case .found: "checkmark.circle.fill"
         case .added: "checkmark.circle"
+        case .photo: "camera.viewfinder"
+        case .noCard: "exclamationmark.circle"
         }
     }
 
@@ -261,7 +379,7 @@ enum ScanStatus: Equatable {
     /// Nothing better to say yet: a read name may replace it.
     var isIdle: Bool {
         switch self {
-        case .looking, .added: true
+        case .looking, .added, .noCard: true
         default: false
         }
     }
@@ -367,6 +485,7 @@ struct TextScanner: UIViewControllerRepresentable {
     var zoom: Double?
     var torch = false
     var camera: BackCamera?
+    var shutter: Shutter?
     let onLines: @MainActor ([(text: String, points: [CGPoint])]) -> Void
 
     /// English and German first; the others printed on cards where the phone reads them.
@@ -385,6 +504,7 @@ struct TextScanner: UIViewControllerRepresentable {
             isHighlightingEnabled: false // the overlay draws its own boxes
         )
         scanner.delegate = context.coordinator
+        shutter?.scanner = scanner
         return scanner
     }
 

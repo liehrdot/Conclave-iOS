@@ -79,6 +79,8 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   asked once), `ScanSteadiness` (a doubtful hit must come twice, the card just added waits for an empty frame).
   `Lenses.swift`: `Lens` = one lens button (zoom factor + "0.5"/"1"/"4" counted from the main camera), `choices()` from the
   camera's switch-over zooms, `picked()`.
+  `PhotoRead.swift`: "Take Photo"'s maths: `screenRect()` (a photo box on the aspect-filled screen), `frames(around:)` (card
+  frames of 1, 0.85, 1.15, 0.7 × the screen's), `best()` (set line + name › whole name › a piece).
   `GameDraft` = the "Log a Game" form's state and rules (`forms.js` game sheet: rematch within 8 h, `setResult`, `setPlace` fills
   the last place and decides win/loss, `payload` = `game.add`). `ReadModelCache.loadJSON()` = the raw saved copy for `Optimistic`.
   `PendingOp.summary(in:)` (`OpSummary`) = a change in a few words ("Loss with Meren") for the toast and the refused list.
@@ -108,7 +110,9 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   line, marks and labels the name and the set line, the frame snaps green on a hit (fades with Reduce Motion), a glass status
   pill says it in words, success haptic, VoiceOver announcement; the Camera app's lens buttons ("0.5", "1×", "4": `Lens.choices`
   in the core from `BackCamera`'s switch-over zooms, kept in `AppStorage` `scanZoom`) and a flashlight button (`BackCamera.setTorch`,
-  set again whenever the camera starts); "Type a Name" › `AddByNameView`)
+  set again whenever the camera starts); "Take Photo" (`Shutter` = the scanner's own `capturePhoto()`, `PhotoText` = Vision's
+  `RecognizeTextRequest` on the still, `PhotoRead` in the core lays its lines over card frames of a few sizes and keeps the best
+  hit, like `scanPhoto()`); "Type a Name" › `AddByNameView`)
   and the search tab Cards (`CardsView`, `Tab(role: .search)`:
   `.searchable`, `find(name:)` 300 ms after typing pauses, rows with `CardArt`, the last 12 opened in `AppStorage` `recentCards`, tap › `CardSheet`; "Filters" in the top bar › `FilterSheet` (with a filter the name search is one paged `Scryfall.search`, without a name
   the most played cards that fit; `FiltersRow` (shared with the Collection tab: a plain line, words in the label colour) above the results); a Name | Describe switch in the top bar: `DescribeSearch` (`App/DescribeView.swift`) = description + colour/type chips ›
