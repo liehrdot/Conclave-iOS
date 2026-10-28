@@ -11,6 +11,8 @@ struct CardSheet: View {
     let copies: [CollectionEntry]
     /// The copies are the deck's (from a deck), or all of the person's (from the Collection tab).
     var inDeck = true
+    /// The deck the sheet was opened from: "Add" then offers moving the card between it and its maybe list.
+    var deck: Deck? = nil
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var card: Card?
@@ -18,6 +20,7 @@ struct CardSheet: View {
     @State private var picked = 0
     @State private var turned = false
     @State private var adding = false
+    @State private var addingToDeck = false
 
     private var copy: CollectionEntry? { copies.indices.contains(picked) ? copies[picked] : copies.first }
 
@@ -71,13 +74,53 @@ struct CardSheet: View {
                     Button("Done") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Add to Collection", systemImage: "plus.rectangle.on.rectangle") { adding = true }
-                        .disabled(card == nil)
+                    Menu("Add", systemImage: "plus") {
+                        if let deck = liveDeck {
+                            deckActions(deck)
+                        }
+                        Button("Add to a Deck…", systemImage: "rectangle.stack.badge.plus") { addingToDeck = true }
+                        Button("Add to Collection…", systemImage: "plus.rectangle.on.rectangle") { adding = true }
+                    }
+                    .disabled(card == nil)
                 }
             }
             .sheet(isPresented: $adding) { AddToCollectionView(name: card?.name ?? name) }
+            .sheet(isPresented: $addingToDeck) { AddToDeckView(name: card?.name ?? name, card: card) { dismiss() } }
         }
         .task { await load() }
+    }
+
+    /// The deck as it is now (a change made here shows at once).
+    private var liveDeck: Deck? {
+        guard let deck else { return nil }
+        return model.library?.decks.first { $0.slug == deck.slug } ?? deck
+    }
+
+    /// Moving the card between the deck it was opened from and that deck's maybe list. It saves and closes,
+    /// so the toast with "Undo" shows on the deck.
+    @ViewBuilder
+    private func deckActions(_ deck: Deck) -> some View {
+        let shown = card?.name ?? name
+        let place = DeckEdit.place(of: shown, in: deck)
+        if place != .commander {
+            Section(deck.name) {
+                if let payload = DeckEdit.add(shown, card: card, to: deck, as: .deck) {
+                    Button(place == .maybe ? "Move into the Deck" : place == .none ? "Add to the Deck" : "Add Another Copy",
+                           systemImage: "plus.circle") { save(payload) }
+                }
+                if let payload = DeckEdit.add(shown, card: card, to: deck, as: .maybe) {
+                    Button(place == .none ? "Add to the Maybe List" : "Move to the Maybe List",
+                           systemImage: "questionmark.circle") { save(payload) }
+                }
+            }
+        }
+    }
+
+    private func save(_ payload: JSONValue) {
+        Task {
+            _ = await model.save("deck.edit", payload)
+            dismiss()
+        }
     }
 
     /// Their own copy's printing when they have one in the deck, else Scryfall's.

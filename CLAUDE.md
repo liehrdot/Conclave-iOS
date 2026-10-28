@@ -90,6 +90,10 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `identify()` = all of it for one photo's read lines (the app's "Take Photo" and the benchmark share it).
   `GameDraft` = the "Log a Game" form's state and rules (`forms.js` game sheet: rematch within 8 h, `setResult`, `setPlace` fills
   the last place and decides win/loss, `payload` = `game.add`). `ReadModelCache.loadJSON()` = the raw saved copy for `Optimistic`.
+  `DeckEdit` = "Add to Deck": `add(_:card:to:as:)` = one card into a deck or onto its maybe list as a `deck.edit`
+  payload with `prev` (its "Undo", which `Outbox.inverse` sends; the PWA can't take a deck edit back), nil for the
+  commander or a card already there (basic lands get one more copy), `place(of:in:)`, `guessCategory()` (`build.js`);
+  `Optimistic` shows `deck.edit` at once like `appops._deck_edit` + `maybe.change`.
   `PendingOp.summary(in:)` (`OpSummary`) = a change in a few words ("Loss with Meren") for the toast and the refused list.
   `OpponentEdit` = the opponent screen's changes as payloads (`update` sends only changed name/player/bracket with `prev`,
   `toggle` a tag chip, `note`), like the PWA's `editOpponentSheet()` and its tag chips / note form.
@@ -100,7 +104,9 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   return and every minute via `Connection.refresh`; a 401 leads back to the welcome screen), `RootView` (welcome or
   `MainView`), `WelcomeView` → `ScanView` (VisionKit QR) or `EnterCodeView`; `MainView` = tabs Decks (`DecksView` →
   `DeckView` → `Rule0View` sheet, `LogGameView` sheet ("Log a Game": result as a segmented control, opponents via `OpponentPicker`,
-  places, "More Details"), `CardSheet` per card: the own copy's printing (foil sheen, several copies to pick; from the Collection tab all the person's copies, `inDeck: false`),
+  places, "More Details"), "Add Cards" (+ in the top bar) › `DeckCardSearch` (`App/AddToDeckView.swift`: name search, Deck | Maybe
+  List picked above (`AppStorage` `addToSpot`), a tap adds, the sheet stays open), `CardSheet` per card (its "Add" menu: with the
+  deck it was opened from, move between that deck and its maybe list; "Add to a Deck…" › `AddToDeckView`; "Add to Collection…"): the own copy's printing (foil sheen, several copies to pick; from the Collection tab all the person's copies, `inDeck: false`),
   else Scryfall's, 3D turn for double-faced cards, `ManaText` rules text) and Opponents (`OpponentsView` → `OpponentView`: tag chips "What It Does" save on a tap, "Add Note" › `AddNoteView`,
   "Edit" › `EditOpponentView` (name, player, bracket; not the commander yet)), Collection (`CollectionView`: totals as
   `StatPill`s, an All/Original/Proxy/Foil filter kept in `AppStorage` `collectionFilter`, `.searchable`, one row per card with

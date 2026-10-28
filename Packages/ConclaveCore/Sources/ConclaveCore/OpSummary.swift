@@ -32,6 +32,13 @@ extension PendingOp {
             return qty < 0 ? "Removed \(name)" : qty == 1 ? name : "\(qty) × \(name)"
         case "collection.update":
             return collectionChange(in: library)
+        case "deck.edit":
+            let into = deck(payload["deck"]?.string)
+            if let name = payload["add"]?[0]?["name"]?.string { return "\(name) in \(into)" }
+            if let name = payload["maybe_add"]?[0]?["name"]?.string { return "\(name) on \(into)'s maybe list" }
+            if let name = payload["remove"]?[0]?.string ?? payload["maybe_remove"]?[0]?.string { return "Removed \(name) from \(into)" }
+            if let name = payload["set_qty"]?.object?.keys.first { return "\(name) in \(into)" }
+            return "Changes to \(into)"
         default:
             return "A change"
         }

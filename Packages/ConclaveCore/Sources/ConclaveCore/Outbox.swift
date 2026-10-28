@@ -212,6 +212,9 @@ public actor Outbox {
         case "deck.flags":
             guard let deck = payload["deck"], let prev = payload["prev"] else { return nil }
             return ("deck.flags", with(["deck": deck], prev))
+        case "deck.edit":  // the app's own `prev` (`DeckEdit.add`); the PWA can't take a deck edit back
+            guard let deck = payload["deck"], let prev = payload["prev"] else { return nil }
+            return ("deck.edit", with(["deck": deck], prev))
         case "deck.pin_order":
             guard let prev = payload["prev"], prev.array?.isEmpty == false else { return nil }
             return ("deck.pin_order", .object(["slugs": prev]))
