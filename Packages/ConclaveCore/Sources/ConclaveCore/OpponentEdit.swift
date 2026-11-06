@@ -64,7 +64,7 @@ public enum OpponentEdit {
         guard !body.isEmpty else { return nil }
         return .object([
             "id": .string(opponent.id),
-            "note_id": .string(String(PendingOp.newID().prefix(8))),
+            "note_id": .string(PendingOp.shortID()),
             "text": .string(body),
         ])
     }

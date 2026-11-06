@@ -56,9 +56,6 @@ public struct ReadModel: Decodable, Equatable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey { case decks, opponents, games, players, options, optionsEn, collection }
-
-    /// The games played with a deck, newest first (the read model's order).
-    public func games(of deck: Deck) -> [Game] { games.filter { $0.deck == deck.slug } }
 }
 
 /// The quick-pick lists (`appdata.snapshot` `options`): each a list of key and label, in the order to show.
@@ -228,9 +225,6 @@ public struct Deck: Decodable, Equatable, Sendable, Identifiable {
     /// What the app shows: English when the server sends it, else the German.
     public var shownRule0: Rule0 { rule0En ?? rule0 }
     public var shownLevel: String? { levelEn ?? level }
-
-    /// Cards in the deck, commanders not counted twice.
-    public var cardCount: Int { cards.reduce(0) { $0 + ($1.qty ?? 1) } }
 }
 
 public struct Opponent: Decodable, Equatable, Sendable, Identifiable {
