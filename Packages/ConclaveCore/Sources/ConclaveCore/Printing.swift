@@ -161,7 +161,7 @@ public struct CollectionAddDraft: Equatable, Sendable {
 
     /// The `collection.add` payload, like the PWA's: the printing's facts (`entryFacts()`), then kind,
     /// finish, language, copies and place. `id` is the new entry's.
-    public func payload(id: String = String(PendingOp.newID().prefix(12))) -> JSONValue {
+    public func payload(id: String = PendingOp.newID()) -> JSONValue {
         func optional(_ value: String?) -> JSONValue { value.map(JSONValue.string) ?? .null }
         let entry: [String: JSONValue] = [
             "id": .string(id), "name": .string(printing.name), "scryfall_id": .string(printing.id), "set": .string(printing.set),

@@ -36,6 +36,9 @@ public struct PendingOp: Codable, Equatable, Sendable, Identifiable {
         (0..<6).map { _ in String(format: "%02x", UInt8.random(in: 0...255)) }.joined()
     }
 
+    /// The 8-character id the PWA gives notes and new opponents (`uid().slice(0, 8)` in `data.js`).
+    public static func shortID() -> String { String(newID().prefix(8)) }
+
     /// Now, as `nowIso()` in the PWA writes it: seconds, `+00:00`.
     public static func now(_ date: Date = .now) -> String {
         var style = Date.ISO8601FormatStyle(timeZone: .gmt)

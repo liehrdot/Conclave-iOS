@@ -356,7 +356,7 @@ public enum Optimistic {
     static func newOpponent(_ fields: Object, at: String, tags known: Set<String>?) -> Object? {
         let commanders = (fields["commanders"]?.array ?? []).compactMap { text($0) }.prefix(2)
         guard !commanders.isEmpty else { return nil }
-        let id = fields["id"]?.string ?? String(PendingOp.newID().prefix(8))
+        let id = fields["id"]?.string ?? PendingOp.shortID()
         return ["id": .string(id), "title": .null, "label": .string(text(fields["label"]) ?? ""),
                 "player": .string(text(fields["player"]) ?? ""), "commanders": .array(commanders.map(JSONValue.string)),
                 "colors": .string(colors(fields["colors"])), "bracket": .null, "tags": cleanKeys(fields["tags"], known: known),

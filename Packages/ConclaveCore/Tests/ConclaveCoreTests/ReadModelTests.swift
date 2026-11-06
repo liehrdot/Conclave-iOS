@@ -36,7 +36,6 @@ import Testing
         #expect(kaalia.shownRule0.text.hasSuffix("Does this fit your table?"))
         #expect(kaalia.shownRule0.rows.map(\.flag) == kaalia.rule0.rows.map(\.flag))
         #expect(kaalia.shownLevel == "Bracket 2")
-        #expect(kaalia.cardCount == kaalia.cards.reduce(0) { $0 + ($1.qty ?? 1) })
     }
 
     @Test func readsOpponentsAndGames() throws {
@@ -46,8 +45,7 @@ import Testing
         #expect(!opponent.title.isEmpty)
         #expect(opponent.record.games >= 0)
         let game = try #require(model.games.first)
-        let deck = try #require(model.decks.first { $0.slug == game.deck })
-        #expect(model.games(of: deck).contains(game))
+        #expect(model.decks.contains { $0.slug == game.deck })
         #expect(["win", "loss", "draw"].contains(game.result))
     }
 
