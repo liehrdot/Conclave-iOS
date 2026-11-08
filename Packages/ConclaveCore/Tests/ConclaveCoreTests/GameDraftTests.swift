@@ -77,23 +77,25 @@ import Testing
     @Test func savesAsTheServerReadsIt() throws {
         var game = draft()
         game.add(.init(commander: "Edgar Markov"))
-        #expect(game.payload == nil)
+        #expect(game.change == nil)
         game.setPlace(1, seat: 1)
         game.setPlace(2)
         game.turn = 9
         game.issues = ["mana"]
         game.note = "  Close one  "
-        let payload = try #require(game.payload)
+        let change = try #require(game.change)
+        #expect(change.type == .gameAdd)
+        let payload = change.payload
         #expect(payload["game"]?["result"] == .string("loss"))
         #expect(payload["game"]?["place"] == .int(2))
         #expect(payload["game"]?["note"] == .string("Close one"))
         #expect(payload["opponents"]?[0]?["id"] == .string("o1"))
         #expect(payload["opponents"]?[0]?["new_id"] == .null)
         #expect(payload["opponents"]?[1]?["new_id"]?.string?.count == 8)
-        #expect(payload == game.payload)  // the same every time: a resent op makes the same opponent
+        #expect(change == game.change)  // the same every time: a resent op makes the same opponent
 
         // and the phone shows it at once, linked the way the server will
-        let shown = try ReadModel.decode(Optimistic.apply([PendingOp(type: "game.add", payload: payload)], to: Self.base))
+        let shown = try ReadModel.decode(Optimistic.apply([PendingOp(change)], to: Self.base))
         let logged = try #require(shown.games.first { $0.id == game.id })
         #expect(logged.opponents == ["Atraxa, Praetors' Voice", "Edgar Markov"])
         #expect(logged.place == 2 && logged.turn == 9)

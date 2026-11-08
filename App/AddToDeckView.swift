@@ -23,11 +23,11 @@ struct AddToDeckView: View {
                 }
                 Section {
                     ForEach(model.library?.decks ?? []) { deck in
-                        let payload = DeckEdit.add(name, card: card, to: deck, as: spot)
+                        let change = DeckEdit.add(name, card: card, to: deck, as: spot)
                         Button {
-                            guard let payload else { return }
+                            guard let change else { return }
                             Task {
-                                _ = await model.save("deck.edit", payload)
+                                _ = await model.save(change)
                                 dismiss()
                                 saved()
                             }
@@ -120,10 +120,10 @@ struct DeckCardSearch: View {
 
     private func row(_ hit: NameHit, in deck: Deck) -> some View {
         let place = DeckEdit.place(of: hit.name, in: deck)
-        let payload = DeckEdit.add(hit.name, card: hit.card, to: deck, as: spot)
+        let change = DeckEdit.add(hit.name, card: hit.card, to: deck, as: spot)
         return Button {
-            guard let payload else { return }
-            Task { _ = await model.save("deck.edit", payload) }
+            guard let change else { return }
+            Task { _ = await model.save(change) }
         } label: {
             HStack(spacing: 12) {
                 CardArt(name: hit.name)

@@ -5,9 +5,9 @@ import Testing
 /// Runs Conclave's shared operation cases (`ops.json`) through `Optimistic`: what the phone shows at
 /// once must be what the server's model will hold after it applied the operation.
 @Suite struct OptimisticTests {
-    /// The types `Optimistic` handles so far; the others come with their screens.
-    static let handled: Set = ["game.add", "game.delete", "opponent.add", "opponent.update", "opponent.note",
-                               "opponent.note_delete", "opponent.delete", "collection.add", "collection.update", "deck.edit"]
+    /// The types `Optimistic` doesn't show at once yet (no screen sends them); every other type is checked.
+    static let notShown: Set<OpType> = [.deckFlags, .deckPinOrder]
+    static let handled = Set(OpType.allCases.filter { !notShown.contains($0) }.map(\.rawValue))
 
     static var cases: [JSONValue] {
         APICasesTests.cases.filter { handled.contains($0["op"]?["type"]?.string ?? "") }
@@ -54,12 +54,12 @@ import Testing
 
     @Test func opsBuildOnEachOtherAndFailedOnesAreLeftOut() throws {
         let base = try #require(APICasesTests.file["bases"]?["default"])
-        let opponent = PendingOp(type: "opponent.add", payload: .object([
+        let opponent = PendingOp(type: .opponentAdd, payload: .object([
             "opponent": .object(["id": .string("o9"), "commanders": .array([.string("Edgar Markov")])])]))
-        let game = PendingOp(type: "game.add", payload: .object([
+        let game = PendingOp(type: .gameAdd, payload: .object([
             "game": .object(["id": .string("g9"), "deck": .string("meren"), "result": .string("loss"), "place": .int(2)]),
             "opponents": .array([.object(["id": .string("o9"), "place": .int(1)])])]))
-        var refused = PendingOp(type: "game.delete", payload: .object(["deck": .string("meren"), "id": .string("g1")]))
+        var refused = PendingOp(type: .gameDelete, payload: .object(["deck": .string("meren"), "id": .string("g1")]))
         refused.status = .failed
         let got = Optimistic.apply([opponent, game, refused], to: base)
 

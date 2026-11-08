@@ -1,6 +1,6 @@
 import Foundation
 
-/// Changes to one opponent deck from its screen, as the payloads of `opponent.update` and `opponent.note`.
+/// Changes to one opponent deck from its screen, as `opponent.update` and `opponent.note` changes.
 /// Each update carries `prev`, the old values, so "Undo" can send them back (`Outbox.inverse`).
 /// Mirrors the PWA: `editOpponentSheet()` → `commit()` in `forms.js`, the tag chips and the note form in
 /// `screens.js` `opponent()`.
@@ -26,7 +26,7 @@ public enum OpponentEdit {
     public static let brackets = 1...5
 
     /// Only the fields that changed, with their old values in `prev`; nil when nothing changed.
-    public static func update(_ opponent: Opponent, to fields: Fields) -> JSONValue? {
+    public static func update(_ opponent: Opponent, to fields: Fields) -> Change? {
         let before = Fields(of: opponent)
         let now = Fields(label: trimmed(fields.label), player: trimmed(fields.player), bracket: fields.bracket)
         var payload: [String: JSONValue] = ["id": .string(opponent.id)]
@@ -45,28 +45,28 @@ public enum OpponentEdit {
         }
         guard !prev.isEmpty else { return nil }
         payload["prev"] = .object(prev)
-        return .object(payload)
+        return Change(.opponentUpdate, .object(payload))
     }
 
     /// The opponent's tags after one chip was tapped: on when it was off, off when it was on.
-    public static func toggle(_ tag: String, on opponent: Opponent) -> JSONValue {
+    public static func toggle(_ tag: String, on opponent: Opponent) -> Change {
         let now = opponent.tags.contains(tag) ? opponent.tags.filter { $0 != tag } : opponent.tags + [tag]
-        return .object([
+        return Change(.opponentUpdate, .object([
             "id": .string(opponent.id),
             "tags": .array(now.map(JSONValue.string)),
             "prev": .object(["tags": .array(opponent.tags.map(JSONValue.string))]),
-        ])
+        ]))
     }
 
     /// A new note; nil when there's nothing in it. The server keeps the first 1,000 characters.
-    public static func note(_ text: String, on opponent: Opponent) -> JSONValue? {
+    public static func note(_ text: String, on opponent: Opponent) -> Change? {
         let body = trimmed(text)
         guard !body.isEmpty else { return nil }
-        return .object([
+        return Change(.opponentNote, .object([
             "id": .string(opponent.id),
             "note_id": .string(PendingOp.shortID()),
             "text": .string(body),
-        ])
+        ]))
     }
 
     private static func trimmed(_ text: String) -> String { text.trimmingCharacters(in: .whitespacesAndNewlines) }

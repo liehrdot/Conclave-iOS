@@ -8,38 +8,38 @@ extension PendingOp {
         let deck = { (slug: String?) in library?.decks.first { $0.slug == slug }?.name ?? slug ?? "a deck" }
         let opponent = { (id: String?) in library?.opponents.first { $0.id == id }?.title ?? "an opponent" }
         switch type {
-        case "game.add":
+        case .gameAdd:
             let game = payload["game"]
             let result = ["win": "Win", "loss": "Loss", "draw": "Draw"][game?["result"]?.string ?? ""] ?? "Game"
             return "\(result) with \(deck(game?["deck"]?.string))"
-        case "game.delete":
+        case .gameDelete:
             return "Removed game with \(deck(payload["deck"]?.string))"
-        case "opponent.add":
+        case .opponentAdd:
             let commanders = (payload["opponent"]?["commanders"]?.array ?? []).compactMap(\.string)
             return "New opponent \(commanders.first ?? "")".trimmingCharacters(in: .whitespaces)
-        case "opponent.update":
+        case .opponentUpdate:
             return "Changes to \(opponent(payload["id"]?.string))"
-        case "opponent.note":
+        case .opponentNote:
             return "Note on \(opponent(payload["id"]?.string))"
-        case "opponent.note_delete":
+        case .opponentNoteDelete:
             return "Removed note on \(opponent(payload["id"]?.string))"
-        case "opponent.delete":
+        case .opponentDelete:
             return "Removed \(opponent(payload["id"]?.string))"
-        case "collection.add":
+        case .collectionAdd:
             let entry = payload["entry"]
             let name = entry?["name"]?.string ?? "a card"
             let qty = entry?["qty"]?.int ?? 1
             return qty < 0 ? "Removed \(name)" : qty == 1 ? name : "\(qty) × \(name)"
-        case "collection.update":
+        case .collectionUpdate:
             return collectionChange(in: library)
-        case "deck.edit":
+        case .deckEdit:
             let into = deck(payload["deck"]?.string)
             if let name = payload["add"]?[0]?["name"]?.string { return "\(name) in \(into)" }
             if let name = payload["maybe_add"]?[0]?["name"]?.string { return "\(name) on \(into)'s maybe list" }
             if let name = payload["remove"]?[0]?.string ?? payload["maybe_remove"]?[0]?.string { return "Removed \(name) from \(into)" }
             if let name = payload["set_qty"]?.object?.keys.first { return "\(name) in \(into)" }
             return "Changes to \(into)"
-        default:
+        case .deckFlags, .deckPinOrder:
             return "A change"
         }
     }

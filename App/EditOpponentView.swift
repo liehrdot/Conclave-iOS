@@ -61,8 +61,8 @@ struct EditOpponentView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", role: .confirm) {
-                        if let payload = OpponentEdit.update(opponent, to: fields) {
-                            Task { await model.save("opponent.update", payload) }
+                        if let change = OpponentEdit.update(opponent, to: fields) {
+                            Task { await model.save(change) }
                         }
                         dismiss()
                     }
@@ -100,8 +100,8 @@ struct AddNoteView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", role: .confirm) {
-                        if let payload = OpponentEdit.note(text, on: opponent) {
-                            Task { await model.save("opponent.note", payload) }
+                        if let change = OpponentEdit.note(text, on: opponent) {
+                            Task { await model.save(change) }
                         }
                         dismiss()
                     }

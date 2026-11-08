@@ -18,7 +18,7 @@ import Testing
     }
 
     @Test func newOpsLookLikeTheWebApps() {
-        let op = PendingOp(type: "game.add", payload: game)
+        let op = PendingOp(type: .gameAdd, payload: game)
         #expect(op.id.count == 12 && op.id.allSatisfy(\.isHexDigit))
         #expect(op.status == .pending)
         #expect(PendingOp.now(Date(timeIntervalSince1970: 1_760_126_400)) == "2025-10-10T20:00:00+00:00")
@@ -26,13 +26,13 @@ import Testing
 
     @Test func opsSurviveARestart() async {
         let file = tempFile()
-        let added = await Outbox(file: file).add("game.add", game)
+        let added = await Outbox(file: file).add(Change(.gameAdd, game))
         #expect(await Outbox(file: file).ops == [added])
     }
 
     @Test func flushSendsTheWireFormatAndMarksOpsSent() async throws {
         let outbox = Outbox(file: nil)
-        let op = await outbox.add("game.add", game)
+        let op = await outbox.add(Change(.gameAdd, game))
         let fake = FakeTransport(answer(#"{"id": "\#(op.id)", "ok": true}"#))
         let outcome = await outbox.flush(to: Server(device: device, transport: fake))
         #expect(outcome == .sent(etag: #""ab12-3f-42""#, more: false))
@@ -50,8 +50,8 @@ import Testing
 
     @Test func busyOpsStayAndRefusedOnesFail() async {
         let outbox = Outbox(file: nil)
-        let busy = await outbox.add("game.add", game)
-        let refused = await outbox.add("opponent.delete", .object(["id": .string("x")]))
+        let busy = await outbox.add(Change(.gameAdd, game))
+        let refused = await outbox.add(Change(.opponentDelete, .object(["id": .string("x")])))
         let fake = FakeTransport(answer(#"{"id": "\#(busy.id)", "ok": false, "retry": true}, {"id": "\#(refused.id)", "ok": false, "error": "Gegnerdeck nicht gefunden."}"#))
         _ = await outbox.flush(to: Server(device: device, transport: fake))
         #expect(await outbox.pending.map(\.id) == [busy.id])
@@ -62,7 +62,7 @@ import Testing
 
     @Test func failuresBackOffAndForceSkipsTheWait() async {
         let outbox = Outbox(file: nil)
-        await outbox.add("game.add", game)
+        await outbox.add(Change(.gameAdd, game))
         let fake = FakeTransport()
         fake.failure = URLError(.notConnectedToInternet)
         let server = Server(device: device, transport: fake)
@@ -79,14 +79,14 @@ import Testing
 
     @Test func aSignedOffPhoneSaysSo() async {
         let outbox = Outbox(file: nil)
-        await outbox.add("game.add", game)
+        await outbox.add(Change(.gameAdd, game))
         let outcome = await outbox.flush(to: Server(device: device, transport: FakeTransport(.init(status: 401))))
         #expect(outcome == .signedOff)
     }
 
     @Test func bigOutboxesGoInBatches() async throws {
         let outbox = Outbox(file: nil)
-        for _ in 0..<(Outbox.batchSize + 3) { await outbox.add("game.add", game) }
+        for _ in 0..<(Outbox.batchSize + 3) { await outbox.add(Change(.gameAdd, game)) }
         let fake = FakeTransport(answer(""))
         #expect(await outbox.flush(to: Server(device: device, transport: fake)) == .sent(etag: #""ab12-3f-42""#, more: true))
         let body = try JSONDecoder().decode([String: [JSONValue]].self, from: try #require(fake.requests.first?.httpBody))
@@ -95,10 +95,10 @@ import Testing
 
     @Test func confirmDropsOnlyWhatTheReadModelHas() async {
         let outbox = Outbox(file: nil)
-        let first = await outbox.add("game.add", game)
+        let first = await outbox.add(Change(.gameAdd, game))
         let fake = FakeTransport(answer(#"{"id": "\#(first.id)", "ok": true}"#, seq: 42))
         _ = await outbox.flush(to: Server(device: device, transport: fake))
-        let waiting = await outbox.add("game.add", game)
+        let waiting = await outbox.add(Change(.gameAdd, game))
         await outbox.confirm(etag: #""ab12-3f-41-zstd""#)  // an older read model: keep it applied
         #expect(await outbox.ops.map(\.id) == [first.id, waiting.id])
         await outbox.confirm(etag: #""ab12-3f-42-zstd""#)
@@ -107,41 +107,41 @@ import Testing
 
     @Test func undoDropsAWaitingOpAndTakesBackASentOne() async {
         let outbox = Outbox(file: nil)
-        let waiting = await outbox.add("game.add", game)
+        let waiting = await outbox.add(Change(.gameAdd, game))
         #expect(await outbox.undo(waiting) == nil)
         #expect(await outbox.ops.isEmpty)
 
-        let sent = await outbox.add("game.add", game)
+        let sent = await outbox.add(Change(.gameAdd, game))
         _ = await outbox.flush(to: Server(device: device, transport: FakeTransport(answer(#"{"id": "\#(sent.id)", "ok": true}"#))))
         let opposite = await outbox.undo(sent)
-        #expect(opposite?.type == "game.delete")
+        #expect(opposite?.type == .gameDelete)
         #expect(opposite?.payload == .object(["deck": .string("meren"), "id": .string("g1")]))
         #expect(await outbox.pending.map(\.id) == [opposite?.id])
     }
 
     @Test func inverses() {
-        func inverse(_ type: String, _ payload: [String: JSONValue]) -> (String, JSONValue)? {
-            Outbox.inverse(type, .object(payload)).map { ($0.type, $0.payload) }
+        func inverse(_ type: OpType, _ payload: [String: JSONValue]) -> Change? {
+            Outbox.inverse(of: Change(type, .object(payload)))
         }
         let gamePayload: JSONValue = game
-        #expect(inverse("game.delete", ["deck": .string("meren"), "id": .string("g1"), "restore": gamePayload])! == ("game.add", gamePayload))
-        #expect(inverse("game.delete", ["deck": .string("meren"), "id": .string("g1")]) == nil)
-        #expect(inverse("opponent.add", ["opponent": .object(["id": .string("o1")])])! == ("opponent.delete", .object(["id": .string("o1")])))
-        #expect(inverse("opponent.note", ["id": .string("o1"), "note_id": .string("n1"), "text": .string("x")])!
-            == ("opponent.note_delete", .object(["id": .string("o1"), "note_id": .string("n1")])))
-        #expect(inverse("opponent.update", ["id": .string("o1"), "label": .string("New"), "prev": .object(["label": .string("Old")])])!
-            == ("opponent.update", .object(["id": .string("o1"), "label": .string("Old")])))
-        #expect(inverse("deck.flags", ["deck": .string("meren"), "pinned": .bool(true), "prev": .object(["pinned": .bool(false)])])!
-            == ("deck.flags", .object(["deck": .string("meren"), "pinned": .bool(false)])))
-        #expect(inverse("deck.pin_order", ["slugs": .array([.string("b"), .string("a")]), "prev": .array([.string("a"), .string("b")])])!
-            == ("deck.pin_order", .object(["slugs": .array([.string("a"), .string("b")])])))
-        #expect(inverse("deck.pin_order", ["slugs": .array([]), "prev": .array([])]) == nil)
-        #expect(inverse("collection.add", ["entry": .object(["name": .string("Sol Ring"), "qty": .int(2)])])!
-            == ("collection.add", .object(["entry": .object(["name": .string("Sol Ring"), "qty": .int(-2)])])))
+        #expect(inverse(.gameDelete, ["deck": .string("meren"), "id": .string("g1"), "restore": gamePayload])! == Change(.gameAdd, gamePayload))
+        #expect(inverse(.gameDelete, ["deck": .string("meren"), "id": .string("g1")]) == nil)
+        #expect(inverse(.opponentAdd, ["opponent": .object(["id": .string("o1")])])! == Change(.opponentDelete, .object(["id": .string("o1")])))
+        #expect(inverse(.opponentNote, ["id": .string("o1"), "note_id": .string("n1"), "text": .string("x")])!
+            == Change(.opponentNoteDelete, .object(["id": .string("o1"), "note_id": .string("n1")])))
+        #expect(inverse(.opponentUpdate, ["id": .string("o1"), "label": .string("New"), "prev": .object(["label": .string("Old")])])!
+            == Change(.opponentUpdate, .object(["id": .string("o1"), "label": .string("Old")])))
+        #expect(inverse(.deckFlags, ["deck": .string("meren"), "pinned": .bool(true), "prev": .object(["pinned": .bool(false)])])!
+            == Change(.deckFlags, .object(["deck": .string("meren"), "pinned": .bool(false)])))
+        #expect(inverse(.deckPinOrder, ["slugs": .array([.string("b"), .string("a")]), "prev": .array([.string("a"), .string("b")])])!
+            == Change(.deckPinOrder, .object(["slugs": .array([.string("a"), .string("b")])])))
+        #expect(inverse(.deckPinOrder, ["slugs": .array([]), "prev": .array([])]) == nil)
+        #expect(inverse(.collectionAdd, ["entry": .object(["name": .string("Sol Ring"), "qty": .int(2)])])!
+            == Change(.collectionAdd, .object(["entry": .object(["name": .string("Sol Ring"), "qty": .int(-2)])])))
         let entry: JSONValue = .object(["id": .string("c1"), "name": .string("Sol Ring"), "qty": .int(1)])
-        #expect(inverse("collection.update", ["id": .string("c1"), "qty": .int(0), "restore": entry])! == ("collection.add", .object(["entry": entry])))
-        #expect(inverse("collection.update", ["id": .string("c1"), "foil": .bool(true), "prev": .object(["foil": .bool(false)])])!
-            == ("collection.update", .object(["id": .string("c1"), "foil": .bool(false)])))
-        #expect(inverse("deck.edit", ["deck": .string("meren")]) == nil)
+        #expect(inverse(.collectionUpdate, ["id": .string("c1"), "qty": .int(0), "restore": entry])! == Change(.collectionAdd, .object(["entry": entry])))
+        #expect(inverse(.collectionUpdate, ["id": .string("c1"), "foil": .bool(true), "prev": .object(["foil": .bool(false)])])!
+            == Change(.collectionUpdate, .object(["id": .string("c1"), "foil": .bool(false)])))
+        #expect(inverse(.deckEdit, ["deck": .string("meren")]) == nil)
     }
 }

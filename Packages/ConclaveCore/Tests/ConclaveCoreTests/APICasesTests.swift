@@ -38,6 +38,8 @@ import Testing
             "deck.pin_order", "collection.add", "collection.update",
         ]
         #expect(phone.isSubset(of: types), "missing: \(phone.subtracting(types).sorted())")
+        let app = Set(OpType.allCases.map(\.rawValue))
+        #expect(app.isSubset(of: phone), "the app sends a type the PWA doesn't: \(app.subtracting(phone).sorted())")
     }
 
     @Test func basesAreReadModels() throws {

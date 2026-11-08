@@ -430,8 +430,8 @@ private struct EntrySection: View {
                 .materialRow()
             NavigationLink {
                 PlacePicker(art: entry.name, place: entry.placeDeck?.isEmpty ?? true ? entry.place ?? "" : "", deck: entry.placeDeck ?? "") {
-                    if let payload = CollectionEdit.move(entry, place: $0, deck: $1, decks: model.library?.decks ?? []) {
-                        Task { await model.save("collection.update", payload) }
+                    if let change = CollectionEdit.move(entry, place: $0, deck: $1, decks: model.library?.decks ?? []) {
+                        Task { await model.save(change) }
                     }
                 }
             } label: {
@@ -463,14 +463,14 @@ private struct EntrySection: View {
         sending = Task {
             try? await Task.sleep(for: Self.pause)
             guard !Task.isCancelled else { return }
-            if let payload = CollectionEdit.quantity(entry, to: qty) { await model.save("collection.update", payload) }
+            if let change = CollectionEdit.quantity(entry, to: qty) { await model.save(change) }
             copies = nil
         }
     }
 
-    private func save(_ payload: JSONValue?) {
-        guard let payload else { return }
-        Task { await model.save("collection.update", payload) }
+    private func save(_ change: Change?) {
+        guard let change else { return }
+        Task { await model.save(change) }
     }
 }
 
