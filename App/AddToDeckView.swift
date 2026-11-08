@@ -48,7 +48,7 @@ struct AddToDeckView: View {
                             .contentShape(.rect)
                         }
                         .buttonStyle(.plain)
-                        .disabled(payload == nil)
+                        .disabled(change == nil)
                         .materialRow()
                     }
                 } header: {
@@ -139,17 +139,17 @@ struct DeckCardSearch: View {
                     }
                 }
                 Spacer(minLength: 0)
-                Image(systemName: payload == nil ? "checkmark.circle.fill" : spot == .deck ? "plus.circle" : "questionmark.circle")
+                Image(systemName: change == nil ? "checkmark.circle.fill" : spot == .deck ? "plus.circle" : "questionmark.circle")
                     .font(.title2)
-                    .foregroundStyle(payload == nil ? Color.secondary : Color.accentColor)
+                    .foregroundStyle(change == nil ? Color.secondary : Color.accentColor)
                     .accessibilityHidden(true)
             }
             .frame(minHeight: 44)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .disabled(payload == nil)
-        .accessibilityHint(payload == nil ? "" : spot == .deck ? "Adds it to the deck" : "Puts it on the maybe list")
+        .disabled(change == nil)
+        .accessibilityHint(change == nil ? "" : spot == .deck ? "Adds it to the deck" : "Puts it on the maybe list")
         .materialRow()
     }
 
