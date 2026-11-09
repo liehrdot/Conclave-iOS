@@ -159,9 +159,9 @@ public struct CollectionAddDraft: Equatable, Sendable {
         setFoil(foil)
     }
 
-    /// The `collection.add` payload, like the PWA's: the printing's facts (`entryFacts()`), then kind,
+    /// The `collection.add`, like the PWA's: the printing's facts (`entryFacts()`), then kind,
     /// finish, language, copies and place. `id` is the new entry's.
-    public func payload(id: String = PendingOp.newID()) -> JSONValue {
+    public func change(id: String = PendingOp.newID()) -> Change {
         func optional(_ value: String?) -> JSONValue { value.map(JSONValue.string) ?? .null }
         let entry: [String: JSONValue] = [
             "id": .string(id), "name": .string(printing.name), "scryfall_id": .string(printing.id), "set": .string(printing.set),
@@ -171,6 +171,6 @@ public struct CollectionAddDraft: Equatable, Sendable {
             "proxy": .bool(proxy), "foil": .bool(foil), "lang": .string(lang), "qty": .int(copies),
             "place": .string(deck.isEmpty ? place : ""), "place_deck": .string(deck),
         ]
-        return .object(["entry": .object(entry)])
+        return Change(.collectionAdd, .object(["entry": .object(entry)]))
     }
 }

@@ -67,7 +67,7 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `appops._collection_add`/`_collection_update`, merging entries by `appops._coll_key`), checked against every matching `ops.json` case.
   `CollectionEdit.swift`: `ReadModel.collectionGroups(matching:filter:)` (one group per card; the search looks at name, set code
   and place), `collectionTotals`, `placeName(of:)`, `knownPlaces` (`collection.js`/`scan.js` `knownPlaces()`), and
-  `CollectionEdit` = the Collection tab's `collection.update` payloads (copies, proxy, foil, `move` to a deck or place, `remove`
+  `CollectionEdit` = the Collection tab's `collection.update` changes (copies, proxy, foil, `move` to a deck or place, `remove`
   with `restore` for "Undo"), like the PWA's `entrySheet()` and `placePage()`.
   `CollectionFilters.swift` = the Collection tab's "Sort and Filter" (more than the web app has): `CollectionFilters` (places as
   `deck:<slug>`/`place:<text>`/`none`/`free`, colours like a colour identity (`id<=`, colourless only with C), types from the front
@@ -77,7 +77,7 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `Printing.swift`: `Printing` = one printing in one language (Scryfall's id, set, number, finishes, prices, printed name);
   `Scryfall.printing(set:number:lang:)`, `printing(named:set:)` (fuzzy) and `printings(of:anyLanguage:)` mirror `scry.js`
   `printing()`/`named()`/`prints()`; `CollectionAddDraft` = the add sheet's choices (foil only as far as the printing was made
-  that way, 1…99 copies) and its `collection.add` payload (`addSheet()` + `entryFacts()` in `scan.js`).
+  that way, 1…99 copies) and its `collection.add` change (`addSheet()` + `entryFacts()` in `scan.js`).
   `CardReader.swift` = the scanner's rules, ported from `scan.js`: `ReadLine` (a read line placed in the card frame, 0…1),
   `CardFrame` (the 63 × 88 cutout), `SetLine.parse` (`parseLine()`), `CardRead` (name candidates from the top, the set line
   from the bottom, `cleanName()`), `CardLookup` (Scryfall, or a fake in tests), `actor CardReader` (`identify()`: set line
@@ -89,17 +89,19 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   frames of 1, 0.85, 1.15, 0.7 × the screen's), `best()` (set line + name › whole name › a piece),
   `identify()` = all of it for one photo's read lines (the app's "Take Photo" and the benchmark share it).
   `GameDraft` = the "Log a Game" form's state and rules (`forms.js` game sheet: rematch within 8 h, `setResult`, `setPlace` fills
-  the last place and decides win/loss, `payload` = `game.add`). `ReadModelCache.loadJSON()` = the raw saved copy for `Optimistic`.
+  the last place and decides win/loss, `change` = `game.add`). `ReadModelCache.loadJSON()` = the raw saved copy for `Optimistic`.
   `DeckEdit` = "Add to Deck": `add(_:card:to:as:)` = one card into a deck or onto its maybe list as a `deck.edit`
   payload with `prev` (its "Undo", which `Outbox.inverse` sends; the PWA can't take a deck edit back), nil for the
   commander or a card already there (basic lands get one more copy), `place(of:in:)`, `guessCategory()` (`build.js`);
   `Optimistic` shows `deck.edit` at once like `appops._deck_edit` + `maybe.change`.
+  `Change` = an `OpType` (the op types the app sends, by their wire names) with its payload: every edit builder
+  returns one, so a screen never picks the type; `Outbox.add`/`inverse(of:)`, `Optimistic` and `OpSummary` switch over `OpType`.
   `PendingOp.summary(in:)` (`OpSummary`) = a change in a few words ("Loss with Meren") for the toast and the refused list.
-  `OpponentEdit` = the opponent screen's changes as payloads (`update` sends only changed name/player/bracket with `prev`,
+  `OpponentEdit` = the opponent screen's changes (`update` sends only changed name/player/bracket with `prev`,
   `toggle` a tag chip, `note`), like the PWA's `editOpponentSheet()` and its tag chips / note form.
   `Mana.pieces` splits `{2}{B}`/`{T}` text into symbols (`Kind`, `spoken` for VoiceOver).
 - App: `AppModel` (paired device, `library` = the read model from `ReadModelCache` with the outbox's `ops` applied
-  (`Optimistic`), `save(type, payload)` = queue + show + send (sets `saved` for the toast), `undo(op)` = `Outbox.undo` + send the inverse,
+  (`Optimistic`), `save(change)` = queue + show + send (sets `saved` for the toast), `undo(op)` = `Outbox.undo` + send the inverse,
   `dismiss(op)` drops a refused op, `waiting`/`refused` for the status line, `send()` flushes and refreshes after a batch, `refresh()` on opening, on
   return and every minute via `Connection.refresh`; a 401 leads back to the welcome screen), `RootView` (welcome or
   `MainView`), `WelcomeView` → `ScanView` (VisionKit QR) or `EnterCodeView`; `MainView` = tabs Decks (`DecksView` →

@@ -30,10 +30,10 @@ final class AppModel {
     /// Why the phone is no longer paired, when the PC signed it off; shown on the welcome screen.
     private(set) var notice: String?
     /// The game the `saved` screenshot logs: a win with the demo's first deck.
-    static let screenshotGame: JSONValue = .object([
+    static let screenshotGame = Change(.gameAdd, .object([
         "game": .object(["id": .string("shot1"), "deck": .string("meren-aristocrats"), "result": .string("win"), "place": .int(1)]),
         "opponents": .array([.object(["id": .string("o-atraxa"), "commander": .string("Atraxa, Praetors' Voice"), "place": .int(2)])]),
-    ])
+    ]))
 
     /// The made-up account from the welcome screen ("Try the Demo"): nothing is sent anywhere.
     var inDemo: Bool { device == .demo }
@@ -126,8 +126,8 @@ final class AppModel {
     /// and kept in the outbox until the server has it. In the demo it stays on this phone.
     /// The toast with "Undo" shows it for a few seconds.
     @discardableResult
-    func save(_ type: String, _ payload: JSONValue) async -> PendingOp {
-        let op = await outbox.add(type, payload)
+    func save(_ change: Change) async -> PendingOp {
+        let op = await outbox.add(change)
         await showOps()
         saved = Saved(op: op, text: "\(op.summary(in: library)) saved")
         Task { await send(force: true) }
@@ -250,7 +250,7 @@ extension AppModel {
         if demoScreens.contains(screen) {
             let model = AppModel(store: MemoryDeviceStore(), cache: nil, transport: transport)
             model.showDemo()
-            if screen == "saved" { Task { await model.save("game.add", Self.screenshotGame) } }
+            if screen == "saved" { Task { await model.save(Self.screenshotGame) } }
             return model
         }
         let model = AppModel(store: MemoryDeviceStore(), cache: nil, transport: transport)

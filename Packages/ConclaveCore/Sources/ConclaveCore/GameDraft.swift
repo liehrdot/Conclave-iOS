@@ -109,8 +109,8 @@ public struct GameDraft: Equatable, Sendable {
         for i in seats.indices where (seats[i].place ?? 0) > tableSize { seats[i].place = nil }
     }
 
-    /// The `game.add` payload, like `saveGame()`; nil without a result.
-    public var payload: JSONValue? {
+    /// The `game.add`, like `saveGame()`; nil without a result.
+    public var change: Change? {
         guard let result else { return nil }
         var game: [String: JSONValue] = [
             "id": .string(id), "deck": .string(deck), "result": .string(result),
@@ -129,6 +129,6 @@ public struct GameDraft: Equatable, Sendable {
                 "place": seat.place.map(JSONValue.int) ?? .null,
             ])
         }
-        return .object(["game": .object(game), "opponents": .array(opponents)])
+        return Change(.gameAdd, .object(["game": .object(game), "opponents": .array(opponents)]))
     }
 }

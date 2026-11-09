@@ -23,9 +23,13 @@ public enum DeckEdit {
         return .none
     }
 
-    /// The `deck.edit` payload that puts `name` into the deck or onto its maybe list; nil when there's nothing to
+    /// The `deck.edit` that puts `name` into the deck or onto its maybe list; nil when there's nothing to
     /// do: a commander, a card that is already there (a basic land can go in again: one more copy).
-    public static func add(_ name: String, card: Card?, to deck: Deck, as spot: Spot) -> JSONValue? {
+    public static func add(_ name: String, card: Card?, to deck: Deck, as spot: Spot) -> Change? {
+        addPayload(name, card: card, to: deck, as: spot).map { Change(.deckEdit, $0) }
+    }
+
+    private static func addPayload(_ name: String, card: Card?, to deck: Deck, as spot: Spot) -> JSONValue? {
         let slug = JSONValue.string(deck.slug)
         let place = place(of: name, in: deck)
         let category = deck.cards.first { $0.name == name }?.category ?? deck.maybe.first { $0.name == name }?.category

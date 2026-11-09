@@ -13,7 +13,7 @@ public struct PendingOp: Codable, Equatable, Sendable, Identifiable {
     }
 
     public var id: String
-    public var type: String
+    public var type: OpType
     public var payload: JSONValue
     /// When it happened on the phone, ISO 8601 (`2026-10-10T20:00:00+00:00`).
     public var at: String
@@ -22,13 +22,21 @@ public struct PendingOp: Codable, Equatable, Sendable, Identifiable {
     public var ack: String?
     public var error: String?
 
-    public init(id: String = PendingOp.newID(), type: String, payload: JSONValue, at: String = PendingOp.now(), status: Status = .pending) {
+    public init(id: String = PendingOp.newID(), type: OpType, payload: JSONValue, at: String = PendingOp.now(), status: Status = .pending) {
         self.id = id
         self.type = type
         self.payload = payload
         self.at = at
         self.status = status
     }
+
+    /// A new op for `change`, waiting to be sent.
+    public init(_ change: Change) {
+        self.init(type: change.type, payload: change.payload)
+    }
+
+    /// The change this op carries.
+    public var change: Change { Change(type, payload) }
 
     /// 12 hex characters, like `uid()` in the PWA's `util.js`. The server remembers applied ids, so a
     /// batch sent twice (the answer got lost) changes nothing the second time.
@@ -110,8 +118,8 @@ public actor Outbox {
 
     /// Queues a change; the app sends it with `flush(to:force: true)` right after.
     @discardableResult
-    public func add(_ type: String, _ payload: JSONValue) -> PendingOp {
-        let op = PendingOp(type: type, payload: payload)
+    public func add(_ change: Change) -> PendingOp {
+        let op = PendingOp(change)
         ops.append(op)
         save()
         return op
@@ -175,8 +183,8 @@ public actor Outbox {
             save()
             return nil
         }
-        guard let opposite = Self.inverse(op.type, op.payload) else { return nil }
-        return add(opposite.type, opposite.payload)
+        guard let opposite = Self.inverse(of: op.change) else { return nil }
+        return add(opposite)
     }
 
     /// Forgets one op, e.g. a failed one the person dismissed.
@@ -192,44 +200,45 @@ public actor Outbox {
     }
 
     /// The operation that takes another one back. Mirrors `INVERSE` in the PWA's `data.js`.
-    public static func inverse(_ type: String, _ payload: JSONValue) -> (type: String, payload: JSONValue)? {
+    public static func inverse(of change: Change) -> Change? {
+        let payload = change.payload
         func with(_ base: [String: JSONValue], _ extra: JSONValue?) -> JSONValue {
             .object(base.merging(extra?.object ?? [:]) { first, _ in first })
         }
-        switch type {
-        case "game.add":
+        switch change.type {
+        case .gameAdd:
             guard let game = payload["game"], let deck = game["deck"], let id = game["id"] else { return nil }
-            return ("game.delete", .object(["deck": deck, "id": id]))
-        case "game.delete":
+            return Change(.gameDelete, .object(["deck": deck, "id": id]))
+        case .gameDelete:
             guard let restore = payload["restore"] else { return nil }
-            return ("game.add", restore)
-        case "opponent.add":
+            return Change(.gameAdd, restore)
+        case .opponentAdd:
             guard let id = payload["opponent"]?["id"] else { return nil }
-            return ("opponent.delete", .object(["id": id]))
-        case "opponent.note":
+            return Change(.opponentDelete, .object(["id": id]))
+        case .opponentNote:
             guard let id = payload["id"], let note = payload["note_id"] else { return nil }
-            return ("opponent.note_delete", .object(["id": id, "note_id": note]))
-        case "opponent.update":
+            return Change(.opponentNoteDelete, .object(["id": id, "note_id": note]))
+        case .opponentUpdate:
             guard let id = payload["id"], let prev = payload["prev"] else { return nil }
-            return ("opponent.update", with(["id": id], prev))
-        case "deck.flags":
+            return Change(.opponentUpdate, with(["id": id], prev))
+        case .deckFlags:
             guard let deck = payload["deck"], let prev = payload["prev"] else { return nil }
-            return ("deck.flags", with(["deck": deck], prev))
-        case "deck.edit":  // the app's own `prev` (`DeckEdit.add`); the PWA can't take a deck edit back
+            return Change(.deckFlags, with(["deck": deck], prev))
+        case .deckEdit:  // the app's own `prev` (`DeckEdit.add`); the PWA can't take a deck edit back
             guard let deck = payload["deck"], let prev = payload["prev"] else { return nil }
-            return ("deck.edit", with(["deck": deck], prev))
-        case "deck.pin_order":
+            return Change(.deckEdit, with(["deck": deck], prev))
+        case .deckPinOrder:
             guard let prev = payload["prev"], prev.array?.isEmpty == false else { return nil }
-            return ("deck.pin_order", .object(["slugs": prev]))
-        case "collection.add":
+            return Change(.deckPinOrder, .object(["slugs": prev]))
+        case .collectionAdd:
             guard var entry = payload["entry"]?.object, let qty = entry["qty"]?.int else { return nil }
             entry["qty"] = .int(-qty)
-            return ("collection.add", .object(["entry": .object(entry)]))
-        case "collection.update":
-            if let restore = payload["restore"] { return ("collection.add", .object(["entry": restore])) }
+            return Change(.collectionAdd, .object(["entry": .object(entry)]))
+        case .collectionUpdate:
+            if let restore = payload["restore"] { return Change(.collectionAdd, .object(["entry": restore])) }
             guard let id = payload["id"], let prev = payload["prev"] else { return nil }
-            return ("collection.update", with(["id": id], prev))
-        default:
+            return Change(.collectionUpdate, with(["id": id], prev))
+        case .opponentDelete, .opponentNoteDelete:  // nothing to bring them back from
             return nil
         }
     }
@@ -256,7 +265,7 @@ extension Duration {
 extension Server {
     /// Sends ops in one batch: `POST /api/app/ops` with `{"ops": [{id, type, payload, at}]}`.
     public func send(_ ops: [PendingOp]) async throws -> OpsAnswer {
-        struct Wire: Encodable { let id: String; let type: String; let payload: JSONValue; let at: String }
+        struct Wire: Encodable { let id: String; let type: OpType; let payload: JSONValue; let at: String }
         var request = request("api/app/ops")
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

@@ -18,38 +18,37 @@ import Testing
     }
 
     @Test func onlyTheChangedFieldsGoWithTheirOldValues() throws {
-        let payload = try #require(OpponentEdit.update(Self.tim, to: .init(label: "Tim's Combo", player: "Tim", bracket: nil)))
-        #expect(payload == .object([
+        let change = try #require(OpponentEdit.update(Self.tim, to: .init(label: "Tim's Combo", player: "Tim", bracket: nil)))
+        #expect(change == Change(.opponentUpdate, .object([
             "id": .string("o1"), "label": .string("Tim's Combo"), "bracket": .null,
             "prev": .object(["label": .string(""), "bracket": .int(4)]),
-        ]))
-        let edited = try opponent("o1", after: [PendingOp(type: "opponent.update", payload: payload)])
+        ])))
+        let edited = try opponent("o1", after: [PendingOp(change)])
         #expect(edited.title == "Tim's Combo (Atraxa, Praetors' Voice)")
         #expect(edited.bracket == nil)
     }
 
     @Test func undoPutsTheOldValuesBack() throws {
-        let payload = try #require(OpponentEdit.update(Self.tim, to: .init(label: "", player: "Anna", bracket: 2)))
-        let op = PendingOp(type: "opponent.update", payload: payload)
-        let inverse = try #require(Outbox.inverse(op.type, op.payload))
-        let back = try opponent("o1", after: [op, PendingOp(type: inverse.type, payload: inverse.payload)])
+        let change = try #require(OpponentEdit.update(Self.tim, to: .init(label: "", player: "Anna", bracket: 2)))
+        let inverse = try #require(Outbox.inverse(of: change))
+        let back = try opponent("o1", after: [PendingOp(change), PendingOp(inverse)])
         #expect(back.player == "Tim")
         #expect(back.bracket == 4)
     }
 
     @Test func aTagChipTurnsOnAndOff() throws {
         let off = OpponentEdit.toggle("combo", on: Self.tim)
-        #expect(off["tags"] == .array([]))
-        #expect(off["prev"]?["tags"] == .array([.string("combo")]))
+        #expect(off.type == .opponentUpdate && off.payload["tags"] == .array([]))
+        #expect(off.payload["prev"]?["tags"] == .array([.string("combo")]))
         let on = OpponentEdit.toggle("stax", on: Self.tim)
-        #expect(try opponent("o1", after: [PendingOp(type: "opponent.update", payload: on)]).tags == ["combo", "stax"])
+        #expect(try opponent("o1", after: [PendingOp(on)]).tags == ["combo", "stax"])
     }
 
     @Test func aNoteNeedsText() throws {
         #expect(OpponentEdit.note("  \n", on: Self.tim) == nil)
-        let payload = try #require(OpponentEdit.note(" Ramps hard \n", on: Self.tim))
-        #expect(payload["text"] == .string("Ramps hard"))
-        #expect(payload["note_id"]?.string?.count == 8)
-        #expect(try opponent("o1", after: [PendingOp(type: "opponent.note", payload: payload)]).notes.first?.text == "Ramps hard")
+        let note = try #require(OpponentEdit.note(" Ramps hard \n", on: Self.tim))
+        #expect(note.type == .opponentNote && note.payload["text"] == .string("Ramps hard"))
+        #expect(note.payload["note_id"]?.string?.count == 8)
+        #expect(try opponent("o1", after: [PendingOp(note)]).notes.first?.text == "Ramps hard")
     }
 }

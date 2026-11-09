@@ -26,11 +26,11 @@ public enum Optimistic {
     static func apply(_ op: PendingOp, to model: inout Object) {
         let p = op.payload
         switch op.type {
-        case "game.add":
+        case .gameAdd:
             addGame(p, op: op, to: &model)
-        case "game.delete":
+        case .gameDelete:
             model["games"] = .array(objects(model["games"]).filter { !($0["id"] == p["id"] && $0["deck"] == p["deck"]) }.map(JSONValue.object))
-        case "opponent.add":
+        case .opponentAdd:
             var opponents = objects(model["opponents"])
             guard let fields = p["opponent"]?.object, let id = fields["id"]?.string,
                   !opponents.contains(where: { $0["id"]?.string == id }),
@@ -40,16 +40,16 @@ public enum Optimistic {
             }
             opponents.append(opponent)
             model["opponents"] = .array(opponents.map(JSONValue.object))
-        case "opponent.update", "opponent.note", "opponent.note_delete", "opponent.delete":
+        case .opponentUpdate, .opponentNote, .opponentNoteDelete, .opponentDelete:
             changeOpponent(op, in: &model)
-        case "collection.add":
+        case .collectionAdd:
             addToCollection(p, op: op, in: &model)
-        case "collection.update":
+        case .collectionUpdate:
             changeCollection(p, in: &model)
-        case "deck.edit":
+        case .deckEdit:
             editDeck(p, op: op, in: &model)
-        default:
-            break  // decks: not shown at once yet
+        case .deckFlags, .deckPinOrder:
+            break  // not shown at once yet
         }
     }
 
@@ -108,7 +108,7 @@ public enum Optimistic {
         var opponents = objects(model["opponents"])
         guard let index = opponents.firstIndex(where: { $0["id"] != nil && $0["id"] == p["id"] }) else { return }
         switch op.type {
-        case "opponent.update":
+        case .opponentUpdate:
             if let commanders = p["commanders"] {
                 let names = (commanders.array ?? []).compactMap { text($0) }.prefix(2)
                 guard !names.isEmpty else { return }  // the server refuses an opponent without a commander
@@ -122,15 +122,15 @@ public enum Optimistic {
             }
             if p["tags"] != nil { opponents[index]["tags"] = cleanKeys(p["tags"], known: known(model, "tags")) }
             opponents[index]["updated"] = .string(op.at)
-        case "opponent.note":
+        case .opponentNote:
             guard let noteID = p["note_id"]?.string, let body = text(p["text"]) else { return }
             let notes = opponents[index]["notes"]?.array ?? []
             if notes.contains(where: { $0["id"]?.string == noteID }) { return }
             opponents[index]["notes"] = .array([.object(makeNote(noteID, body, at: op.at))] + notes)
             opponents[index]["updated"] = .string(op.at)
-        case "opponent.note_delete":
+        case .opponentNoteDelete:
             opponents[index]["notes"] = .array((opponents[index]["notes"]?.array ?? []).filter { $0["id"] != p["note_id"] })
-        case "opponent.delete":
+        case .opponentDelete:
             opponents.remove(at: index)
         default:
             return

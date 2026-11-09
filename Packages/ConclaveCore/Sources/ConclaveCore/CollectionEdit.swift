@@ -91,7 +91,7 @@ extension ReadModel {
     }
 }
 
-/// Changes to collection entries from the Collection tab, as `collection.update` payloads. Each one
+/// Changes to collection entries from the Collection tab, as `collection.update` changes. Each one
 /// carries `prev` (or `restore` for a removed entry), so "Undo" can send the old state back
 /// (`Outbox.inverse`). Mirrors `entrySheet()` in the PWA's `collection.js` and `placePage()` in `scan.js`.
 public enum CollectionEdit {
@@ -99,37 +99,37 @@ public enum CollectionEdit {
     public static let maxCopies = 9999
 
     /// A new number of copies; nil when it didn't change. 0 removes the entry: use `remove` for that.
-    public static func quantity(_ entry: CollectionEntry, to qty: Int) -> JSONValue? {
+    public static func quantity(_ entry: CollectionEntry, to qty: Int) -> Change? {
         let qty = min(maxCopies, max(1, qty))
         guard qty != entry.qty else { return nil }
-        return .object(["id": .string(entry.id), "qty": .int(qty), "prev": .object(["qty": .int(entry.qty)])])
+        return Change(.collectionUpdate, .object(["id": .string(entry.id), "qty": .int(qty), "prev": .object(["qty": .int(entry.qty)])]))
     }
 
     /// The entry goes, with everything needed to add it back (`restore`).
-    public static func remove(_ entry: CollectionEntry) -> JSONValue {
-        .object(["id": .string(entry.id), "qty": .int(0), "restore": .object(restore(entry))])
+    public static func remove(_ entry: CollectionEntry) -> Change {
+        Change(.collectionUpdate, .object(["id": .string(entry.id), "qty": .int(0), "restore": .object(restore(entry))]))
     }
 
     /// Original ↔ proxy.
-    public static func proxy(_ entry: CollectionEntry, _ on: Bool) -> JSONValue? {
+    public static func proxy(_ entry: CollectionEntry, _ on: Bool) -> Change? {
         guard on != entry.proxy else { return nil }
-        return .object(["id": .string(entry.id), "proxy": .bool(on), "prev": .object(["proxy": .bool(entry.proxy)])])
+        return Change(.collectionUpdate, .object(["id": .string(entry.id), "proxy": .bool(on), "prev": .object(["proxy": .bool(entry.proxy)])]))
     }
 
-    public static func foil(_ entry: CollectionEntry, _ on: Bool) -> JSONValue? {
+    public static func foil(_ entry: CollectionEntry, _ on: Bool) -> Change? {
         guard on != entry.foil else { return nil }
-        return .object(["id": .string(entry.id), "foil": .bool(on), "prev": .object(["foil": .bool(entry.foil)])])
+        return Change(.collectionUpdate, .object(["id": .string(entry.id), "foil": .bool(on), "prev": .object(["foil": .bool(entry.foil)])]))
     }
 
     /// Where the copies go. Pick a deck by its slug, or a free text; both empty means no place. Text is
     /// tidied like the server does it (`appops._place`), and a typed deck name means that deck. nil when
     /// nothing changes.
-    public static func move(_ entry: CollectionEntry, place: String = "", deck: String = "", decks: [Deck] = []) -> JSONValue? {
+    public static func move(_ entry: CollectionEntry, place: String = "", deck: String = "", decks: [Deck] = []) -> Change? {
         let (text, slug) = placed(place: place, deck: deck, decks: decks)
         let before = (place: entry.placeDeck?.isEmpty ?? true ? entry.place ?? "" : "", deck: entry.placeDeck ?? "")
         guard text != before.place || slug != before.deck else { return nil }
-        return .object(["id": .string(entry.id), "place": .string(text), "place_deck": .string(slug),
-                        "prev": .object(["place": .string(entry.place ?? ""), "place_deck": .string(entry.placeDeck ?? "")])])
+        return Change(.collectionUpdate, .object(["id": .string(entry.id), "place": .string(text), "place_deck": .string(slug),
+                                                    "prev": .object(["place": .string(entry.place ?? ""), "place_deck": .string(entry.placeDeck ?? "")])]))
     }
 
     /// A picked place as the server keeps it: the text with its spaces tidied (`appops._place`), at most

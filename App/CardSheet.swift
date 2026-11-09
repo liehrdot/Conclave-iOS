@@ -104,21 +104,21 @@ struct CardSheet: View {
         let place = DeckEdit.place(of: shown, in: deck)
         if place != .commander {
             Section(deck.name) {
-                if let payload = DeckEdit.add(shown, card: card, to: deck, as: .deck) {
+                if let change = DeckEdit.add(shown, card: card, to: deck, as: .deck) {
                     Button(place == .maybe ? "Move into the Deck" : place == .none ? "Add to the Deck" : "Add Another Copy",
-                           systemImage: "plus.circle") { save(payload) }
+                           systemImage: "plus.circle") { save(change) }
                 }
-                if let payload = DeckEdit.add(shown, card: card, to: deck, as: .maybe) {
+                if let change = DeckEdit.add(shown, card: card, to: deck, as: .maybe) {
                     Button(place == .none ? "Add to the Maybe List" : "Move to the Maybe List",
-                           systemImage: "questionmark.circle") { save(payload) }
+                           systemImage: "questionmark.circle") { save(change) }
                 }
             }
         }
     }
 
-    private func save(_ payload: JSONValue) {
+    private func save(_ change: Change) {
         Task {
-            _ = await model.save("deck.edit", payload)
+            _ = await model.save(change)
             dismiss()
         }
     }

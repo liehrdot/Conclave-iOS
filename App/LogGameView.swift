@@ -125,9 +125,9 @@ struct LogGameView: View {
     private func name(of seat: GameDraft.Seat) -> String { opponent(of: seat)?.title ?? seat.commander }
 
     private func save() {
-        guard let payload = draft.payload else { return }
+        guard let change = draft.change else { return }
         saved += 1
-        Task { await model.save("game.add", payload) }
+        Task { await model.save(change) }
         dismiss()
     }
 

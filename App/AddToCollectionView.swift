@@ -207,7 +207,7 @@ struct AddToCollectionForm: View {
         lastProxy = draft.proxy
         lastPlace = draft.place
         lastDeck = draft.deck
-        Task { await model.save("collection.add", draft.payload()) }
+        Task { await model.save(draft.change()) }
         done(draft.printing)
     }
 }

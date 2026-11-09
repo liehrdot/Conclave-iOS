@@ -99,7 +99,7 @@ struct OpponentView: View {
                 Section {
                     // a tap saves at once, with "Undo" in the toast, like the PWA's tag chips
                     ChoiceChips(title: "Tap to change", choices: tags, picked: opponent.tags) { tag in
-                        Task { await model.save("opponent.update", OpponentEdit.toggle(tag, on: opponent)) }
+                        Task { await model.save(OpponentEdit.toggle(tag, on: opponent)) }
                     }
                     .materialRow()
                 } header: {

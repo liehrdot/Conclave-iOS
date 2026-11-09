@@ -15,21 +15,21 @@ import Testing
         return (base, deck)
     }
 
-    static func after(_ payload: JSONValue, on base: JSONValue) throws -> Deck {
-        let op = PendingOp(type: "deck.edit", payload: payload)
+    static func after(_ change: Change, on base: JSONValue) throws -> Deck {
+        let op = PendingOp(change)
         return try #require(try ReadModel.decode(Optimistic.apply([op], to: base)).decks.first { $0.slug == "meren" })
     }
 
     /// Applies the edit, then its "Undo": the deck must look as it did.
     static func roundTrip(_ name: String, card: Card? = nil, as spot: DeckEdit.Spot) throws -> Deck {
         let (base, deck) = try meren()
-        let payload = try #require(DeckEdit.add(name, card: card, to: deck, as: spot))
-        let edit = PendingOp(type: "deck.edit", payload: payload)
-        let back = try #require(Outbox.inverse(edit.type, edit.payload))
-        let undone = try #require(try ReadModel.decode(Optimistic.apply([edit, PendingOp(type: back.type, payload: back.payload)], to: base))
+        let change = try #require(DeckEdit.add(name, card: card, to: deck, as: spot))
+        #expect(change.type == .deckEdit)
+        let back = try #require(Outbox.inverse(of: change))
+        let undone = try #require(try ReadModel.decode(Optimistic.apply([PendingOp(change), PendingOp(back)], to: base))
             .decks.first { $0.slug == "meren" })
         #expect(undone.cards == deck.cards && undone.maybe == deck.maybe, "\(name) → \(spot): Undo")
-        return try after(payload, on: base)
+        return try after(change, on: base)
     }
 
     @Test func aNewCardGoesIntoTheDeckWithAGuessedCategory() throws {
@@ -89,8 +89,8 @@ import Testing
     @Test func theToastSaysWhatHappened() throws {
         let (base, deck) = try Self.meren()
         let library = try ReadModel.decode(base)
-        let into = PendingOp(type: "deck.edit", payload: try #require(DeckEdit.add("Ponder", card: nil, to: deck, as: .deck)))
-        let maybe = PendingOp(type: "deck.edit", payload: try #require(DeckEdit.add("Ponder", card: nil, to: deck, as: .maybe)))
+        let into = PendingOp(try #require(DeckEdit.add("Ponder", card: nil, to: deck, as: .deck)))
+        let maybe = PendingOp(try #require(DeckEdit.add("Ponder", card: nil, to: deck, as: .maybe)))
         #expect(into.summary(in: library) == "Ponder in \(deck.name)")
         #expect(maybe.summary(in: library) == "Ponder on \(deck.name)'s maybe list")
     }

@@ -95,25 +95,25 @@ import Testing
         draft.setFoil(true)
         draft.copies = 2
         draft.place = "Binder"
-        let entry = try #require(draft.payload(id: "n1")["entry"]?.object)
+        let entry = try #require(draft.change(id: "n1").payload["entry"]?.object)
         #expect(entry["id"] == .string("n1") && entry["name"] == .string("Sol Ring") && entry["qty"] == .int(2))
         #expect(entry["scryfall_id"] == .string("aaaaaaaa-6a4a-4d0a-83ea-7eefa3b35021") && entry["lang"] == .string("de"))
         #expect(entry["price_eur"] == .string("4.00"))  // the foil price
         #expect(entry["proxy"] == .bool(true) && entry["foil"] == .bool(true))
         #expect(entry["place"] == .string("Binder") && entry["place_deck"] == .string(""))
         draft.deck = "meren"
-        #expect(draft.payload()["entry"]?["place"] == .string(""))  // a deck wins over the text
+        #expect(draft.change().payload["entry"]?["place"] == .string(""))  // a deck wins over the text
     }
 
     @Test func anAddShowsAtOnceAndUndoTakesItBack() throws {
         let base = try #require(APICasesTests.file["bases"]?["default"])
         var draft = CollectionAddDraft(Self.printing(Self.solRing))
         draft.place = "binder"
-        let add = PendingOp(type: "collection.add", payload: draft.payload())
+        let add = PendingOp(draft.change())
         let more = try ReadModel.decode(Optimistic.apply([add], to: base))
         #expect(more.collection.first { $0.id == "c1" }?.qty == 3)  // the same printing and place: one more copy
-        let (type, back) = try #require(Outbox.inverse(add.type, add.payload))
-        let undone = try ReadModel.decode(Optimistic.apply([add, PendingOp(type: type, payload: back)], to: base))
+        let back = try #require(Outbox.inverse(of: add.change))
+        let undone = try ReadModel.decode(Optimistic.apply([add, PendingOp(back)], to: base))
         #expect(undone.collection == (try ReadModel.decode(base)).collection)
         #expect(add.summary(in: more) == "Sol Ring")
     }
