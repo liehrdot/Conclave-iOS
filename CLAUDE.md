@@ -64,7 +64,7 @@ to a PR cancels its older CI run. Tests, SonarQube and the `claude` review run o
   `confirm(etag:)` drops sent ops once a read model's seq covers their ack, `undo` (drop if unsent, else `inverse` = `INVERSE`).
   `Optimistic.apply(ops, to:)` = the read model as it will look once the server has the outbox's ops (`data.js` `apply()` +
   `recompute()`, on the raw JSON): games, opponent decks and the collection so far (`collection.add`/`update` follow
-  `appops._collection_add`/`_collection_update`, merging entries by `appops._coll_key`), checked against every matching `ops.json` case.
+  `appops._collection_add`/`_collection_update`, merging entries by Conclave's `collection_key.key`), checked against every matching `ops.json` case.
   `CollectionEdit.swift`: `ReadModel.collectionGroups(matching:filter:)` (one group per card; the search looks at name, set code
   and place), `collectionTotals`, `placeName(of:)`, `knownPlaces` (`collection.js`/`scan.js` `knownPlaces()`), and
   `CollectionEdit` = the Collection tab's `collection.update` changes (copies, proxy, foil, `move` to a deck or place, `remove`
