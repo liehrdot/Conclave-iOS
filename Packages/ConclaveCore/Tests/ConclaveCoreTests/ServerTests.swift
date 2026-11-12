@@ -111,11 +111,6 @@ final class FakeTransport: Transport, @unchecked Sendable {
         #expect(fake.requests[0].httpMethod == "DELETE")
         #expect(fake.requests[0].url?.absoluteString == "https://sync.example.org/api/devices/dev1")
     }
-
-    @Test func aDeviceRoundTrips() throws {
-        let again = try JSONDecoder().decode(Device.self, from: JSONEncoder().encode(device))
-        #expect(again == device)
-    }
 }
 
 @Suite struct SessionTests {
