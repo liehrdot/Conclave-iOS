@@ -398,7 +398,7 @@ public enum Optimistic {
         return [group, pinRank == nil ? 0 : 1, pinRank ?? 0]
     }
 
-    /// `appops._coll_key` (the PC's `collection._key`): one entry per name, printing, proxy, foil,
+    /// Conclave's `collection_key.key` (shared by `appops` and the PC's collection): one entry per name, printing, proxy, foil,
     /// language and place; a deck place ignores the free text, and the text ignores case.
     static func collectionKey(_ e: Object) -> [String] {
         let deck = e["place_deck"]?.string ?? ""
@@ -407,7 +407,7 @@ public enum Optimistic {
                 deck.isEmpty ? (e["place"]?.string ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased() : ""]
     }
 
-    /// `appops._place` (the PC's `collection.clean_place`): the text with its spaces tidied, at most 80
+    /// Conclave's `collection_key.clean_place` (shared by `appops` and the PC's collection): the text with its spaces tidied, at most 80
     /// characters, and a deck slug or "".
     static func cleanPlace(_ place: JSONValue?, _ deck: JSONValue?) -> (String, String) {
         let words = (place?.string ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")

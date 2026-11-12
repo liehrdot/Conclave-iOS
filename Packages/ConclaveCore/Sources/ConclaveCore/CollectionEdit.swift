@@ -122,7 +122,7 @@ public enum CollectionEdit {
     }
 
     /// Where the copies go. Pick a deck by its slug, or a free text; both empty means no place. Text is
-    /// tidied like the server does it (`appops._place`), and a typed deck name means that deck. nil when
+    /// tidied like the server does it (`collection_key.clean_place`), and a typed deck name means that deck. nil when
     /// nothing changes.
     public static func move(_ entry: CollectionEntry, place: String = "", deck: String = "", decks: [Deck] = []) -> Change? {
         let (text, slug) = placed(place: place, deck: deck, decks: decks)
@@ -132,7 +132,7 @@ public enum CollectionEdit {
                                                     "prev": .object(["place": .string(entry.place ?? ""), "place_deck": .string(entry.placeDeck ?? "")])]))
     }
 
-    /// A picked place as the server keeps it: the text with its spaces tidied (`appops._place`), at most
+    /// A picked place as the server keeps it: the text with its spaces tidied (`collection_key.clean_place`), at most
     /// 80 characters, or the deck's slug and no text. A typed deck name means that deck, like `placePage()`.
     public static func placed(place: String, deck: String, decks: [Deck]) -> (place: String, deck: String) {
         let text = String(place.split(whereSeparator: \.isWhitespace).joined(separator: " ").prefix(80))

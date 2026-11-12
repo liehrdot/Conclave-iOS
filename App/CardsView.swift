@@ -249,7 +249,6 @@ struct SearchRow: View {
     }
 }
 
-/// The filters in use, one line above the results: a tap changes them, the x clears them.
 /// The Cards tab's filters in words, for `FiltersRow`.
 private enum FilterSummary {
     static func text(_ filter: CardFilter) -> String {
