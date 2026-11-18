@@ -49,6 +49,16 @@ import Testing
         #expect(["win", "loss", "draw"].contains(game.result))
     }
 
+    @Test func readsTheCollection() throws {
+        let base = try #require(APICasesTests.file["bases"]?["default"])
+        let model = try ReadModel.decode(JSONEncoder().encode(base))
+        let solRing = try #require(model.collection.first { $0.id == "c1" })
+        #expect(solRing.name == "Sol Ring" && solRing.qty == 2 && solRing.place == "Binder")
+        #expect(solRing.collectorNumber == "263" && solRing.priceEur == "1.20" && !solRing.proxy)
+        let forest = try #require(model.collection.first { $0.id == "c2" })
+        #expect(forest.placeDeck == "meren" && forest.set == nil)
+    }
+
     @Test func showsTheEnglishOptions() throws {
         let model = try ReadModel.decode(try #require(Self.models.first))
         #expect(model.shownOptions.results["win"] == "Win")

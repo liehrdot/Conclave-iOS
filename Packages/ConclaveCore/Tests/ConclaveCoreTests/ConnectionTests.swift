@@ -93,10 +93,9 @@ import Testing
     }
 
     @Test func everyProblemHasAMessage() {
-        #expect(Connection.Problem.notACode.message.contains("Pair a device"))
-        #expect(Connection.Problem.needsServer.message.contains("address"))
         let errors: [ServerError] = [.wrongCode, .tooManyTries, .signedOff, .offline, .failed(status: 502, message: "")]
-        #expect(Set(errors.map(\.message)).count == errors.count)
+        let messages = errors.map(\.message) + [Connection.Problem.notACode.message, Connection.Problem.needsServer.message]
+        #expect(Set(messages).count == messages.count && !messages.contains(""))
         #expect(ServerError.failed(status: 502, message: "").message.contains("502"))
         #expect(ServerError.failed(status: 503, message: "Gerade beschäftigt").message == "Gerade beschäftigt")
         #expect(Connection.message(for: ServerError.wrongCode) == ServerError.wrongCode.message)

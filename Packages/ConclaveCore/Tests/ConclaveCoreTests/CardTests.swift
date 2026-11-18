@@ -170,13 +170,6 @@ enum Scry {
         }
     }
 
-    @Test func theReadModelHasTheCollection() throws {
-        let models = try ReadModelTests.models.map(ReadModel.decode)
-        let entry = try #require(models.flatMap(\.collection).first)
-        #expect(!entry.name.isEmpty)
-        #expect(entry.qty > 0)
-    }
-
     @Test func copiesInTheDeckRealAndFoilFirstCappedAtTheDecksCount() throws {
         let deck = try deck
         let model = ReadModel(collection: [
